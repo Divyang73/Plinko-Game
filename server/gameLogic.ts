@@ -48,6 +48,10 @@ export function calculateSlotProbabilities(rows: RowCount): number[] {
   return probabilities.map(p => p / total);
 }
 
+// House edge configuration
+const HOUSE_EDGE_BOOST = 1.05; // 5% boost for lower multipliers
+const HOUSE_EDGE_PENALTY = 0.05; // Logarithmic penalty factor for higher multipliers
+
 // Select a slot based on binomial distribution with slight house edge
 export function selectSlot(rows: RowCount, risk: RiskLevel): number {
   const probabilities = calculateSlotProbabilities(rows);
@@ -57,7 +61,7 @@ export function selectSlot(rows: RowCount, risk: RiskLevel): number {
   const adjustedProbabilities = probabilities.map((prob, index) => {
     const multiplier = multipliers[index];
     // Lower multipliers get slight boost, higher multipliers get slight reduction
-    const adjustment = multiplier < 1 ? 1.05 : 1 / (1 + Math.log10(multiplier) * 0.05);
+    const adjustment = multiplier < 1 ? HOUSE_EDGE_BOOST : 1 / (1 + Math.log10(multiplier) * HOUSE_EDGE_PENALTY);
     return prob * adjustment;
   });
   

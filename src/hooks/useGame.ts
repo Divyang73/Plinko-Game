@@ -27,7 +27,7 @@ export const useGame = () => {
         rows
       };
       
-      const response = await fetch('http://localhost:3000/api/bet', {
+      const response = await fetch('/api/bet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
