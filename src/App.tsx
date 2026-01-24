@@ -1,4 +1,3 @@
-import React from 'react';
 import { GameCanvas } from './components/GameCanvas';
 import { BetControls } from './components/BetControls';
 import { useGame } from './hooks/useGame';
