@@ -10,7 +10,6 @@ interface BetControlsProps {
   rows: RowCount;
   setRows: (rows: RowCount) => void;
   onBet: () => void;
-  isPlaying: boolean;
   lastWin: number;
   lastMultiplier: number;
 }
@@ -24,7 +23,6 @@ export const BetControls: React.FC<BetControlsProps> = ({
   rows,
   setRows,
   onBet,
-  isPlaying,
   lastWin,
   lastMultiplier
 }) => {

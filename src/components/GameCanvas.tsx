@@ -204,8 +204,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
         // Update ball physics
         ball.update(pinsRef.current, canvas.height, slotY);
         
-        // Check if ball just landed in sink
-        if (ball.state === 'landed' && ball.landedTime === Date.now()) {
+        // Check if ball just landed in sink (using flag to avoid timing issues)
+        if (ball.justLanded) {
+          ball.justLanded = false; // Reset flag
+          
           // Trigger sink bounce animation
           const sinkIndex = ball.getSinkIndex(rows, canvas.width);
           if (sinkIndex >= 0 && sinkIndex < sinksRef.current.length) {

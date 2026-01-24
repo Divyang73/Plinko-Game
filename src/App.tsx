@@ -11,7 +11,6 @@ function App() {
     setRisk,
     rows,
     setRows,
-    isPlaying,
     lastWin,
     lastMultiplier,
     placeBet,
@@ -50,7 +49,6 @@ function App() {
             rows={rows}
             setRows={setRows}
             onBet={placeBet}
-            isPlaying={isPlaying}
             lastWin={lastWin}
             lastMultiplier={lastMultiplier}
           />

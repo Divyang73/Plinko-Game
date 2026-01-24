@@ -66,17 +66,16 @@ export const useGame = () => {
     setBalance(prev => prev + payout);
     setLastWin(payout);
     setLastMultiplier(multiplier);
-    setActiveBallsCount(prev => Math.max(0, prev - 1));
     
-    // Only set isPlaying to false when no more active balls
-    setTimeout(() => {
-      setActiveBallsCount(current => {
-        if (current === 0) {
-          setIsPlaying(false);
-        }
-        return current;
-      });
-    }, 100);
+    // Decrement active balls count
+    setActiveBallsCount(prev => {
+      const newCount = Math.max(0, prev - 1);
+      // Set isPlaying to false when no more active balls
+      if (newCount === 0) {
+        setIsPlaying(false);
+      }
+      return newCount;
+    });
   };
   
   return {

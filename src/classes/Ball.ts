@@ -16,6 +16,7 @@ export class Ball {
   state: 'falling' | 'landed' | 'fading' | 'finished' = 'falling';
   landedTime: number = 0;
   opacity: number = 1;
+  justLanded: boolean = false;  // Flag for one-time sink animation trigger
   
   // Multiplier and payout info
   multiplier: number;
@@ -35,7 +36,7 @@ export class Ball {
   private readonly MAX_TRAIL_LENGTH = 10;
   
   constructor(startX: number, startY: number, color: string, path: number[], multiplier: number, payout: number) {
-    this.id = `ball-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    this.id = `ball-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     this.x = startX;
     this.y = startY;
     this.vx = 0;
@@ -123,6 +124,7 @@ export class Ball {
         this.vx = 0;
         this.vy = 0;
         this.y = sinkY * 1000; // Lock position at sink
+        this.justLanded = true; // Set flag for animation trigger
       }
     } else if (this.state === 'landed') {
       // Wait 500ms before fading
