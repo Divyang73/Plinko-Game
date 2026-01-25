@@ -135,9 +135,9 @@ export class Ball {
         const startX = (canvasWidth / 2 - totalWidth / 2 + slotWidth / 2) * 1000;
         const targetX = startX + this.slotIndex * slotWidth * 1000;
         
-        // Lerp toward target slot
-        this.x += (targetX - this.x) * 0.12;
-        this.vx *= 0.8;
+        // Strong lerp toward target slot
+        this.x += (targetX - this.x) * 0.25;
+        this.vx *= 0.7;
       }
       
       // Check if reached sink
@@ -147,6 +147,14 @@ export class Ball {
         this.vx = 0;
         this.vy = 0;
         this.y = sinkY * 1000;
+        
+        // Force final position to exact slot center
+        const slotWidth = 40;
+        const totalSlots = this.rows + 1;
+        const totalWidth = totalSlots * slotWidth;
+        const startX = (canvasWidth / 2 - totalWidth / 2 + slotWidth / 2) * 1000;
+        this.x = startX + this.slotIndex * slotWidth * 1000;
+        
         this.justLanded = true;
         
         // Debug logging
