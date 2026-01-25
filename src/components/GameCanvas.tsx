@@ -6,7 +6,13 @@ interface GameCanvasProps {
   rows: RowCount;
   risk: RiskLevel;
   onBallLanded: (ballId: string, multiplier: number, payout: number) => void;
-  dropBall: { point: number; path: number[]; multiplier: number; payout: number } | null;
+  dropBall: { 
+    point: number; 
+    path: number[]; 
+    multiplier: number; 
+    payout: number;
+    slotIndex: number;
+  } | null;
 }
 
 const HORIZONTAL_SPACING = 40;
@@ -108,7 +114,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
       if (!canvas) return;
       
       const color = RISK_COLORS[risk];
-      const ball = new Ball(dropBall.point, 50000, color, dropBall.path, dropBall.multiplier, dropBall.payout);
+      const ball = new Ball(
+        dropBall.point, 
+        50000, 
+        color, 
+        dropBall.path, 
+        dropBall.multiplier, 
+        dropBall.payout,
+        dropBall.slotIndex,
+        rows
+      );
       
       // Add to active balls array (don't replace)
       ballsRef.current.push(ball);
@@ -197,7 +212,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
       // Update and draw all balls
       ballsRef.current = ballsRef.current.filter(ball => {
         // Update ball physics
-        ball.update(pinsRef.current, canvas.height, slotY);
+        ball.update(pinsRef.current, canvas.height, slotY, canvas.width);
         
         // Check if ball just landed in sink (using flag to avoid timing issues)
         if (ball.justLanded) {

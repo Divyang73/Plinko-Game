@@ -1,9 +1,6 @@
 // Integer physics Ball class with ×1000 scale factor
 export class Ball {
-  // Unique ID for each ball
   id: string;
-  
-  // Position and velocity (all integers, ×1000 scale)
   x: number;
   y: number;
   vx: number;
@@ -12,57 +9,72 @@ export class Ball {
   color: string;
   isActive: boolean;
   
-  // Ball state machine
   state: 'falling' | 'landed' | 'fading' | 'finished' = 'falling';
   landedTime: number = 0;
   opacity: number = 1;
-  justLanded: boolean = false;  // Flag for one-time sink animation trigger
+  justLanded: boolean = false;
   
-  // Multiplier and payout info
   multiplier: number;
   payout: number;
+  slotIndex: number; // The target slot
   
   // Physics constants (×1000 scale)
-  private readonly GRAVITY = 2000;
-  private readonly DAMPING = 950; // 0.95
-  private readonly BOUNCE_FACTOR = 600; // 0.6
+  private readonly GRAVITY = 1500;
+  private readonly DAMPING = 980;
+  private readonly HORIZONTAL_SPEED = 3500; // Fixed horizontal velocity for bounces
   
-  // Path data from backend
+  // Path data
   private path: number[];
-  private pathIndex: number;
+  private rows: number;
+  private lastRowProcessed: number = -1;
+  
+  // Layout constants (must match GameCanvas)
+  private readonly FIRST_ROW_Y = 100;
+  private readonly ROW_SPACING = 40;
+  private readonly SLOT_WIDTH = 40;
+  
+  // Position correction constants
+  private readonly CORRECTION_STRENGTH = 0.25;
+  private readonly VELOCITY_DAMPING = 0.7;
   
   // Trail effect
   private trail: Array<{ x: number; y: number; alpha: number }> = [];
   private readonly MAX_TRAIL_LENGTH = 10;
   
-  constructor(startX: number, startY: number, color: string, path: number[], multiplier: number, payout: number) {
+  constructor(
+    startX: number, 
+    startY: number, 
+    color: string, 
+    path: number[], 
+    multiplier: number, 
+    payout: number,
+    slotIndex: number,
+    rows: number
+  ) {
     this.id = `ball-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     this.x = startX;
     this.y = startY;
     this.vx = 0;
     this.vy = 0;
-    this.radius = 8000; // 8 pixels
+    this.radius = 8000;
     this.color = color;
     this.isActive = true;
     this.path = path;
-    this.pathIndex = 0;
     this.multiplier = multiplier;
     this.payout = payout;
+    this.slotIndex = slotIndex;
+    this.rows = rows;
   }
   
-  // Update physics (integer math only)
-  update(pins: Array<{ x: number; y: number }>, _canvasHeight: number, sinkY: number): void {
+  update(pins: Array<{ x: number; y: number }>, _canvasHeight: number, sinkY: number, canvasWidth: number): void {
     if (!this.isActive) return;
     
-    // Handle state transitions
     if (this.state === 'falling') {
-      // Add to trail
+      // Trail
       this.trail.push({ x: this.x, y: this.y, alpha: 1.0 });
       if (this.trail.length > this.MAX_TRAIL_LENGTH) {
         this.trail.shift();
       }
-      
-      // Decay trail alpha
       this.trail.forEach((point, index) => {
         point.alpha = (index + 1) / this.trail.length * 0.6;
       });
@@ -78,74 +90,86 @@ export class Ball {
       this.vx = (this.vx * this.DAMPING) / 1000;
       this.vy = (this.vy * this.DAMPING) / 1000;
       
-      // Check collision with pins
+      // CORE FIX: Determine current row by Y position
+      const ballYPixels = this.y / 1000;
+      const currentRow = Math.floor((ballYPixels - this.FIRST_ROW_Y + this.ROW_SPACING / 2) / this.ROW_SPACING);
+      
+      // Process path direction ONCE per row
+      if (currentRow > this.lastRowProcessed && currentRow >= 0 && currentRow < this.rows) {
+        this.lastRowProcessed = currentRow;
+        
+        if (currentRow < this.path.length) {
+          // FORCE horizontal direction based on path (0 = left, 1 = right)
+          const goRight = this.path[currentRow] === 1;
+          this.vx = goRight ? this.HORIZONTAL_SPEED : -this.HORIZONTAL_SPEED;
+        }
+      }
+      
+      // Pin collisions - only for visual bounce, direction already set by path
       for (const pin of pins) {
         const dx = this.x - pin.x;
         const dy = this.y - pin.y;
-        const distance = Math.sqrt((dx * dx + dy * dy) / 1000000);
-        const minDist = (10000 + this.radius) / 1000; // pin radius + ball radius
+        const distSq = dx * dx + dy * dy;
+        const minDist = 10000 + this.radius; // pin radius + ball radius (×1000)
+        const minDistSq = minDist * minDist;
         
-        if (distance < minDist && distance > 0) {
-          // Collision detected
-          const angle = Math.atan2(dy / 1000, dx / 1000);
-          const overlap = minDist - distance;
+        if (distSq < minDistSq && distSq > 0) {
+          // Push ball away from pin (separation only)
+          const dist = Math.sqrt(distSq);
+          const overlap = minDist - dist;
+          const nx = dx / dist;
+          const ny = dy / dist;
           
-          // Push ball away from pin
-          this.x += Math.cos(angle) * overlap * 1000;
-          this.y += Math.sin(angle) * overlap * 1000;
+          this.x += nx * overlap;
+          this.y += ny * overlap;
           
-          // Use predetermined path direction if available
-          let bounceDirection = 0;
-          if (this.pathIndex < this.path.length) {
-            // Path uses -1 for left, 1 for right
-            // Convert to bounce direction
-            bounceDirection = this.path[this.pathIndex];
-            this.pathIndex++;
-          } else {
-            // Fallback: reflect based on collision angle
-            bounceDirection = dx > 0 ? 1 : -1;
+          // Bounce vertical velocity
+          if (this.vy < 0) {
+            this.vy = Math.abs(this.vy) * 0.5;
           }
-          
-          // Apply bounce with predetermined direction
-          const speed = Math.sqrt((this.vx * this.vx + this.vy * this.vy) / 1000000);
-          const bounceSpeed = speed * this.BOUNCE_FACTOR / 1000;
-          
-          // Mix deterministic direction with collision angle
-          const targetAngle = angle + (bounceDirection * Math.PI / 6); // ±30 degrees
-          this.vx = Math.cos(targetAngle) * bounceSpeed * 1000;
-          this.vy = Math.sin(targetAngle) * bounceSpeed * 1000;
           
           break;
         }
       }
       
-      // Check if ball reached sink (at bottom)
+      // AFTER all rows processed, guide ball toward correct slot
+      if (this.lastRowProcessed >= this.rows - 1) {
+        const targetX = this.getSlotCenterX(canvasWidth);
+        
+        // Strong lerp toward target slot
+        this.x += (targetX - this.x) * this.CORRECTION_STRENGTH;
+        this.vx *= this.VELOCITY_DAMPING;
+      }
+      
+      // Check if reached sink
       if (this.y >= sinkY * 1000) {
         this.state = 'landed';
         this.landedTime = Date.now();
         this.vx = 0;
         this.vy = 0;
-        this.y = sinkY * 1000; // Lock position at sink
-        this.justLanded = true; // Set flag for animation trigger
+        this.y = sinkY * 1000;
         
-        // Debug logging (only in development - can be removed in production)
-        if (process.env.NODE_ENV !== 'production') {
-          const expectedSlot = this.path.filter(d => d === 1).length;
-          console.log('[Ball landed]', {
-            path: this.path,
-            expectedSlot,
-            multiplier: this.multiplier,
-            payout: this.payout
-          });
-        }
+        // Force final position to exact slot center
+        this.x = this.getSlotCenterX(canvasWidth);
+        
+        this.justLanded = true;
+        
+        // Debug logging
+        const actualSlot = this.getSinkIndex(this.rows, canvasWidth);
+        console.log('[Ball landed]', {
+          path: this.path.join(','),
+          pathSum: this.path.reduce((s, d) => s + d, 0),
+          expectedSlot: this.slotIndex,
+          actualSlot,
+          multiplier: this.multiplier,
+          match: actualSlot === this.slotIndex ? '✅' : '❌ MISMATCH'
+        });
       }
     } else if (this.state === 'landed') {
-      // Wait 500ms before fading
       if (Date.now() - this.landedTime > 500) {
         this.state = 'fading';
       }
     } else if (this.state === 'fading') {
-      // Fade out over ~300ms at 60fps (0.05 per frame)
       this.opacity -= 0.05;
       if (this.opacity <= 0) {
         this.state = 'finished';
@@ -158,19 +182,24 @@ export class Ball {
     return this.state === 'finished';
   }
   
-  getSinkIndex(rows: number, canvasWidth: number): number {
-    const centerX = canvasWidth / 2;
-    const slotWidth = 40; // HORIZONTAL_SPACING
-    const slotCount = rows + 1;
-    const totalWidth = slotCount * slotWidth;
-    const startX = centerX - totalWidth / 2 + slotWidth / 2;
-    
-    // Calculate which slot this ball is in
-    const slotIndex = Math.max(0, Math.min(rows, Math.floor((this.x / 1000 - startX + slotWidth / 2) / slotWidth)));
-    return slotIndex;
+  // Calculate the target X position for a given slot
+  private getSlotCenterX(canvasWidth: number): number {
+    const totalSlots = this.rows + 1;
+    const totalWidth = totalSlots * this.SLOT_WIDTH;
+    const startX = (canvasWidth / 2 - totalWidth / 2 + this.SLOT_WIDTH / 2) * 1000;
+    return startX + this.slotIndex * this.SLOT_WIDTH * 1000;
   }
   
-  // Draw ball and trail (convert to actual pixels here)
+  getSinkIndex(rows: number, canvasWidth: number): number {
+    const slotCount = rows + 1;
+    const totalWidth = slotCount * this.SLOT_WIDTH;
+    const startX = (canvasWidth / 2 - totalWidth / 2 + this.SLOT_WIDTH / 2) * 1000;
+    
+    const relativeX = this.x - startX;
+    const slotIndex = Math.round(relativeX / (this.SLOT_WIDTH * 1000));
+    return Math.max(0, Math.min(rows, slotIndex));
+  }
+  
   draw(ctx: CanvasRenderingContext2D): void {
     ctx.save();
     ctx.globalAlpha = this.opacity;
@@ -186,12 +215,11 @@ export class Ball {
       ctx.restore();
     });
     
-    // Draw main ball with glow
+    // Draw ball
     const x = this.x / 1000;
     const y = this.y / 1000;
     const r = this.radius / 1000;
     
-    // Outer glow
     ctx.shadowColor = this.color;
     ctx.shadowBlur = 20;
     ctx.fillStyle = this.color;
@@ -199,7 +227,6 @@ export class Ball {
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
     
-    // Inner ball
     const gradient = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
     gradient.addColorStop(0.5, this.color);
