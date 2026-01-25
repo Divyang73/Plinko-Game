@@ -9,7 +9,7 @@ export const useGame = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [lastWin, setLastWin] = useState(0);
   const [lastMultiplier, setLastMultiplier] = useState(0);
-  const [dropBall, setDropBall] = useState<{ point: number; path: number[]; multiplier: number; payout: number } | null>(null);
+  const [dropBall, setDropBall] = useState<{ point: number; path: number[]; multiplier: number; payout: number; slotIndex: number } | null>(null);
   const [activeBallsCount, setActiveBallsCount] = useState(0);
   
   const placeBet = async () => {
@@ -48,7 +48,8 @@ export const useGame = () => {
         point: data.point,
         path: data.path,
         multiplier: data.multiplier,
-        payout: data.payout
+        payout: data.payout,
+        slotIndex: data.slotIndex
       });
       
       // Reset dropBall after a short delay to allow effect to fire

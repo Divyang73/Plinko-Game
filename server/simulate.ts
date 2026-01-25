@@ -11,37 +11,39 @@ const HORIZONTAL_SPACING = 40000; // 40
 interface SimulationResult {
   startX: number;
   slotIndex: number;
-  path: number[]; // -1 for left, 1 for right
+  path: number[]; // 0 for left, 1 for right
 }
 
 // Generate a valid path that hits exactly 'rows' pegs and lands in targetSlot
 function generateValidPath(rows: number, targetSlot: number): number[] {
   const path: number[] = [];
+  let remainingRights = targetSlot;
+  let remainingLefts = rows - targetSlot;
   
-  // Simple algorithm: we need exactly targetSlot "rights" (1s) and (rows - targetSlot) "lefts" (-1s)
-  const rightsNeeded = targetSlot;
-  const leftsNeeded = rows - targetSlot;
-  
-  // Create array with exact counts
-  const moves: number[] = [];
-  for (let i = 0; i < rightsNeeded; i++) moves.push(1);
-  for (let i = 0; i < leftsNeeded; i++) moves.push(-1);
-  
-  // Shuffle the array to create variety
-  for (let i = moves.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [moves[i], moves[j]] = [moves[j], moves[i]];
+  for (let i = 0; i < rows; i++) {
+    const total = remainingRights + remainingLefts;
+    if (total === 0) break;
+    
+    const goRight = Math.random() < (remainingRights / total);
+    
+    if (goRight && remainingRights > 0) {
+      path.push(1);
+      remainingRights--;
+    } else {
+      path.push(0);
+      remainingLefts--;
+    }
   }
   
-  return moves;
+  return path;
 }
 
 // Validate that a path leads to the correct slot
 function validatePath(path: number[], targetSlot: number, rows: number): boolean {
   if (path.length !== rows) return false;
   
-  const finalSlot = path.filter(d => d === 1).length; // Count rights (each right = +1 slot)
-  return finalSlot === targetSlot;
+  const pathSum = path.reduce((sum, d) => sum + d, 0);
+  return pathSum === targetSlot;
 }
 
 // Calculate starting X position that will hit the first peg
