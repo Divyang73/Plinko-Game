@@ -1,5 +1,5 @@
 export type RiskLevel = 'low' | 'medium' | 'high';
-export type RowCount = 8 | 12 | 16;
+export type RowCount = 8 | 12;
 
 export interface BetRequest {
   betAmount: number;
