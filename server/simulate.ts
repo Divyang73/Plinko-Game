@@ -123,8 +123,8 @@ function simulateBallDrop(startX: number, rows: number, canvasWidth: number): Si
     
     t += dt;
     
-    // Record position every 50ms for smooth animation
-    if (t % 50 === 0) {
+    // Record position periodically for smooth animation
+    if (Math.abs(t % 50) < dt) {
       points.push({ x, y, t });
     }
   }

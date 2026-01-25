@@ -1,8 +1,4 @@
-interface PathPoint {
-  x: number;
-  y: number;
-  t: number;
-}
+import type { PathPoint } from '../types';
 
 export class Ball {
   id: string;
@@ -37,6 +33,11 @@ export class Ball {
     payout: number,
     slotIndex: number
   ) {
+    // Validate animation path
+    if (!animationPath || animationPath.length === 0) {
+      throw new Error('Animation path must have at least one point');
+    }
+    
     this.id = `ball-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     this.animationPath = animationPath;
     this.startTime = performance.now();

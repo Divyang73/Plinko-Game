@@ -75,7 +75,7 @@ app.post('/api/bet', (req, res) => {
       startX = randomPath.startX;
       animationPath = randomPath.points;
     } else {
-      console.error(`No paths available for slot ${slotIndex}, rows ${rows}`);
+      console.error(`No paths available for slot ${slotIndex}, rows ${rows}. Loaded ${Object.keys(rowPaths || {}).length} slots with paths.`);
       // Fallback: simple straight path (not ideal)
       animationPath = [
         { x: 300, y: 50, t: 0 },
