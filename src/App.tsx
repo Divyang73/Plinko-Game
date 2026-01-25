@@ -15,7 +15,8 @@ function App() {
     lastMultiplier,
     placeBet,
     handleBallLanded,
-    dropBall
+    dropBall,
+    activeBallsCount
   } = useGame();
   
   return (
@@ -51,6 +52,7 @@ function App() {
             onBet={placeBet}
             lastWin={lastWin}
             lastMultiplier={lastMultiplier}
+            activeBallsCount={activeBallsCount}
           />
         </div>
         

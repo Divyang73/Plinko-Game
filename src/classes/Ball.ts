@@ -97,6 +97,8 @@ export class Ball {
           // Use predetermined path direction if available
           let bounceDirection = 0;
           if (this.pathIndex < this.path.length) {
+            // Path uses -1 for left, 1 for right
+            // Convert to bounce direction
             bounceDirection = this.path[this.pathIndex];
             this.pathIndex++;
           } else {
@@ -125,6 +127,15 @@ export class Ball {
         this.vy = 0;
         this.y = sinkY * 1000; // Lock position at sink
         this.justLanded = true; // Set flag for animation trigger
+        
+        // Debug logging
+        const expectedSlot = this.path.filter(d => d === 1).length;
+        console.log('[Ball landed]', {
+          path: this.path,
+          expectedSlot,
+          multiplier: this.multiplier,
+          payout: this.payout
+        });
       }
     } else if (this.state === 'landed') {
       // Wait 500ms before fading

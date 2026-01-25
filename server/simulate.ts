@@ -107,8 +107,7 @@ console.log('Starting Plinko path pre-computation...');
 
 const simulations = {
   8: runSimulation(8),
-  12: runSimulation(12),
-  16: runSimulation(16)
+  12: runSimulation(12)
 };
 
 // Save results

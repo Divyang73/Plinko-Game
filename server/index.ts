@@ -49,7 +49,7 @@ app.post('/api/bet', (req, res) => {
       return res.status(400).json({ error: 'Invalid risk level' });
     }
     
-    if (![8, 12, 16].includes(rows)) {
+    if (![8, 12].includes(rows)) {
       return res.status(400).json({ error: 'Invalid row count' });
     }
     
@@ -76,24 +76,20 @@ app.post('/api/bet', (req, res) => {
     if (path.length === 0 || path.length !== rows) {
       console.warn(`Generating fallback path for slot ${slotIndex}, rows ${rows}`);
       
-      // Generate a valid path that hits all rows
-      let currentSlot = 0;
-      for (let i = 0; i < rows; i++) {
-        const remainingRows = rows - i - 1;
-        const slotsNeeded = slotIndex - currentSlot;
-        
-        let goRight: boolean;
-        if (remainingRows === 0) {
-          goRight = slotsNeeded > 0;
-        } else {
-          const needRightRatio = slotsNeeded / (remainingRows + 1);
-          const probability = Math.max(0, Math.min(1, needRightRatio + 0.5));
-          goRight = Math.random() < probability;
-        }
-        
-        path.push(goRight ? 1 : -1);
-        if (goRight) currentSlot++;
+      // Generate a valid path that leads to slotIndex
+      // slotIndex = number of rights (1s) needed
+      // We need exactly slotIndex rights and (rows - slotIndex) lefts
+      const moves: number[] = [];
+      for (let i = 0; i < slotIndex; i++) moves.push(1);
+      for (let i = 0; i < rows - slotIndex; i++) moves.push(-1);
+      
+      // Shuffle to create variety
+      for (let i = moves.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [moves[i], moves[j]] = [moves[j], moves[i]];
       }
+      
+      path = moves;
       
       // Calculate starting position
       const centerX = 300; // Canvas center in pixels
@@ -102,10 +98,11 @@ app.post('/api/bet', (req, res) => {
       point = Math.round((centerX + startOffset) * 1000);
     }
     
-    // Final validation
-    if (path.length !== rows) {
-      console.error(`Invalid path length: ${path.length}, expected: ${rows}`);
-      // Fallback: simple path
+    // Final validation - path must lead to slotIndex
+    const pathSlotIndex = path.filter(d => d === 1).length;
+    if (path.length !== rows || pathSlotIndex !== slotIndex) {
+      console.error(`Path validation failed: path length=${path.length}, expected=${rows}, pathSlotIndex=${pathSlotIndex}, expected=${slotIndex}`);
+      // Create a correct path
       path = [];
       for (let i = 0; i < rows; i++) {
         path.push(i < slotIndex ? 1 : -1);
