@@ -61,7 +61,7 @@ export class Ball {
     this.rows = rows;
   }
   
-  update(pins: Array<{ x: number; y: number }>, canvasHeight: number, sinkY: number, canvasWidth: number): void {
+  update(pins: Array<{ x: number; y: number }>, _canvasHeight: number, sinkY: number, canvasWidth: number): void {
     if (!this.isActive) return;
     
     if (this.state === 'falling') {
