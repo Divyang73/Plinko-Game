@@ -1,6 +1,12 @@
 export type RiskLevel = 'low' | 'medium' | 'high';
 export type RowCount = 8 | 12;
 
+export interface PathPoint {
+  x: number;
+  y: number;
+  t: number;
+}
+
 export interface BetRequest {
   betAmount: number;
   risk: RiskLevel;
@@ -8,11 +14,11 @@ export interface BetRequest {
 }
 
 export interface BetResponse {
-  point: number;
-  multiplier: number;
   slotIndex: number;
-  path: number[];
+  multiplier: number;
   payout: number;
+  animationPath: PathPoint[];
+  startX: number;
 }
 
 export interface Pin {

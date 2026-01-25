@@ -9,7 +9,7 @@ export const useGame = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [lastWin, setLastWin] = useState(0);
   const [lastMultiplier, setLastMultiplier] = useState(0);
-  const [dropBall, setDropBall] = useState<{ point: number; path: number[]; multiplier: number; payout: number; slotIndex: number } | null>(null);
+  const [dropBall, setDropBall] = useState<{ animationPath: Array<{x: number, y: number, t: number}>; multiplier: number; payout: number; slotIndex: number } | null>(null);
   const [activeBallsCount, setActiveBallsCount] = useState(0);
   
   const placeBet = async () => {
@@ -45,8 +45,7 @@ export const useGame = () => {
       
       // Trigger ball drop - add to array, don't replace
       setDropBall({
-        point: data.point,
-        path: data.path,
+        animationPath: data.animationPath,
         multiplier: data.multiplier,
         payout: data.payout,
         slotIndex: data.slotIndex

@@ -7,8 +7,7 @@ interface GameCanvasProps {
   risk: RiskLevel;
   onBallLanded: (ballId: string, multiplier: number, payout: number) => void;
   dropBall: { 
-    point: number; 
-    path: number[]; 
+    animationPath: Array<{x: number, y: number, t: number}>;
     multiplier: number; 
     payout: number;
     slotIndex: number;
@@ -109,20 +108,14 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
   
   // Handle ball drop
   useEffect(() => {
-    if (dropBall) {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      
+    if (dropBall && dropBall.animationPath.length > 0) {
       const color = RISK_COLORS[risk];
       const ball = new Ball(
-        dropBall.point, 
-        50000, 
-        color, 
-        dropBall.path, 
-        dropBall.multiplier, 
+        dropBall.animationPath,
+        color,
+        dropBall.multiplier,
         dropBall.payout,
-        dropBall.slotIndex,
-        rows
+        dropBall.slotIndex
       );
       
       // Add to active balls array (don't replace)
@@ -137,8 +130,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
-    const slotY = (rows + 1) * VERTICAL_SPACING + 100;
     
     const animate = () => {
       // Clear canvas
@@ -211,15 +202,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
       
       // Update and draw all balls
       ballsRef.current = ballsRef.current.filter(ball => {
-        // Update ball physics
-        ball.update(pinsRef.current, canvas.height, slotY, canvas.width);
+        // Update ball (just interpolate along path)
+        ball.update();
         
         // Check if ball just landed in sink (using flag to avoid timing issues)
         if (ball.justLanded) {
           ball.justLanded = false; // Reset flag
           
           // Trigger sink bounce animation
-          const sinkIndex = ball.getSinkIndex(rows, canvas.width);
+          const sinkIndex = ball.slotIndex;
           if (sinkIndex >= 0 && sinkIndex < sinksRef.current.length) {
             sinksRef.current[sinkIndex].offsetY = 8; // Push down 8px
             sinksRef.current[sinkIndex].glowIntensity = 1; // Full glow
