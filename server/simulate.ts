@@ -5,124 +5,198 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Integer physics constants (×1000 scale)
-const HORIZONTAL_SPACING = 40000; // 40
+// Physics constants matching the visual game
+const GRAVITY = 0.5;
+const BOUNCE_DAMPING = 0.7;
+const HORIZONTAL_DAMPING = 0.99;
 
-interface SimulationResult {
-  startX: number;
-  slotIndex: number;
-  path: number[]; // 0 for left, 1 for right
+interface PathPoint {
+  x: number;
+  y: number;
+  t: number;  // Time in ms
 }
 
-// Generate a valid path that hits exactly 'rows' pegs and lands in targetSlot
-function generateValidPath(rows: number, targetSlot: number): number[] {
-  const path: number[] = [];
-  let remainingRights = targetSlot;
-  let remainingLefts = rows - targetSlot;
+interface SimulatedPath {
+  startX: number;
+  points: PathPoint[];
+  landedSlot: number;
+}
+
+// Simulate a single ball drop with REAL physics
+function simulateBallDrop(startX: number, rows: number, canvasWidth: number): SimulatedPath {
+  const points: PathPoint[] = [];
   
-  for (let i = 0; i < rows; i++) {
-    const total = remainingRights + remainingLefts;
-    if (total === 0) break;
+  // Ball state
+  let x = startX;
+  let y = 50;  // Start Y
+  let vx = 0;
+  let vy = 0;
+  let t = 0;
+  
+  const FIRST_ROW_Y = 100;
+  const ROW_SPACING = 40;
+  const PIN_RADIUS = 10;
+  const BALL_RADIUS = 8;
+  const CENTER_X = canvasWidth / 2;
+  
+  // Generate pin positions
+  const pins: Array<{x: number, y: number, row: number}> = [];
+  for (let row = 0; row < rows; row++) {
+    const pinsInRow = row + 2;
+    const rowWidth = (pinsInRow - 1) * 40;
+    const startPinX = CENTER_X - rowWidth / 2;
+    const pinY = FIRST_ROW_Y + row * ROW_SPACING;
     
-    const goRight = Math.random() < (remainingRights / total);
-    
-    if (goRight && remainingRights > 0) {
-      path.push(1);
-      remainingRights--;
-    } else {
-      path.push(0);
-      remainingLefts--;
+    for (let col = 0; col < pinsInRow; col++) {
+      pins.push({
+        x: startPinX + col * 40,
+        y: pinY,
+        row
+      });
     }
   }
   
-  return path;
-}
-
-// Validate that a path leads to the correct slot
-function validatePath(path: number[], targetSlot: number, rows: number): boolean {
-  if (path.length !== rows) return false;
+  // Sink Y position
+  const sinkY = FIRST_ROW_Y + rows * ROW_SPACING + 20;
   
-  const pathSum = path.reduce((sum, d) => sum + d, 0);
-  return pathSum === targetSlot;
-}
-
-// Calculate starting X position that will hit the first peg
-function calculateStartX(rows: number, canvasWidth: number, targetSlot: number, pathIndex: number): number {
-  const centerX = (canvasWidth * 1000) / 2;
+  // Record initial position
+  points.push({ x, y, t: 0 });
   
-  // First row has 2 pegs at positions -HORIZONTAL_SPACING/2 and +HORIZONTAL_SPACING/2 from center
-  // To hit a peg, start slightly offset from center
-  // Use targetSlot to add variety
-  const normalizedTarget = (targetSlot / rows) - 0.5; // -0.5 to 0.5
-  const startOffset = normalizedTarget * HORIZONTAL_SPACING * 0.8 + (pathIndex % 100) * 100;
+  // Simulate until ball reaches sink
+  const dt = 16;  // ~60fps
+  const maxTime = 10000;  // 10 second max
   
-  return Math.round(centerX + startOffset);
-}
-
-// Run simulation for all possible slots
-function runSimulation(rows: number, canvasWidth: number = 600): Map<number, SimulationResult[]> {
-  console.log(`Running simulation for ${rows} rows...`);
-  
-  const slotMap = new Map<number, SimulationResult[]>();
-  const slotCount = rows + 1;
-  const pathsPerSlot = 500; // Generate 500 valid paths per slot
-  
-  for (let slotIndex = 0; slotIndex < slotCount; slotIndex++) {
-    const paths: SimulationResult[] = [];
+  while (y < sinkY && t < maxTime) {
+    // Apply gravity
+    vy += GRAVITY;
     
-    let attempts = 0;
-    const maxAttempts = pathsPerSlot * 10; // Allow up to 10x attempts
+    // Update position
+    x += vx;
+    y += vy;
     
-    while (paths.length < pathsPerSlot && attempts < maxAttempts) {
-      attempts++;
+    // Apply horizontal damping
+    vx *= HORIZONTAL_DAMPING;
+    
+    // Check collision with pins
+    for (const pin of pins) {
+      const dx = x - pin.x;
+      const dy = y - pin.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = PIN_RADIUS + BALL_RADIUS;
       
-      // Generate a valid path
-      const path = generateValidPath(rows, slotIndex);
-      
-      // Validate it
-      if (validatePath(path, slotIndex, rows)) {
-        // Calculate starting position
-        const startX = calculateStartX(rows, canvasWidth, slotIndex, paths.length);
+      if (dist < minDist && dist > 0) {
+        // Collision! Push ball out
+        const overlap = minDist - dist;
+        const nx = dx / dist;
+        const ny = dy / dist;
         
-        paths.push({
-          startX,
-          slotIndex,
-          path
-        });
+        x += nx * overlap;
+        y += ny * overlap;
+        
+        // Reflect velocity
+        const dotProduct = vx * nx + vy * ny;
+        vx = (vx - 2 * dotProduct * nx) * BOUNCE_DAMPING;
+        vy = (vy - 2 * dotProduct * ny) * BOUNCE_DAMPING;
+        
+        // Add slight randomness (THIS IS KEY FOR NATURAL LOOK!)
+        vx += (Math.random() - 0.5) * 2;
+        vy += (Math.random() - 0.5) * 0.5;
+        
+        // Record collision point
+        points.push({ x, y, t });
+        
+        break;
       }
     }
     
-    if (paths.length > 0) {
-      slotMap.set(slotIndex, paths);
-      console.log(`  Slot ${slotIndex}: Generated ${paths.length} valid paths`);
-    } else {
-      console.warn(`  Slot ${slotIndex}: WARNING - Failed to generate valid paths`);
+    // Keep ball in bounds
+    const leftBound = CENTER_X - (rows + 1) * 20;
+    const rightBound = CENTER_X + (rows + 1) * 20;
+    if (x < leftBound) {
+      x = leftBound;
+      vx = Math.abs(vx) * BOUNCE_DAMPING;
+    }
+    if (x > rightBound) {
+      x = rightBound;
+      vx = -Math.abs(vx) * BOUNCE_DAMPING;
+    }
+    
+    t += dt;
+    
+    // Record position every 50ms for smooth animation
+    if (t % 50 === 0) {
+      points.push({ x, y, t });
     }
   }
   
-  console.log(`Simulation complete. Generated paths for ${slotMap.size} slots.`);
-  return slotMap;
+  // Record final position
+  points.push({ x, y: sinkY, t });
+  
+  // Calculate which slot ball landed in
+  const slotWidth = 40;
+  const totalSlots = rows + 1;
+  const slotsStartX = CENTER_X - (totalSlots * slotWidth) / 2 + slotWidth / 2;
+  const landedSlot = Math.round((x - slotsStartX) / slotWidth);
+  const clampedSlot = Math.max(0, Math.min(rows, landedSlot));
+  
+  return {
+    startX,
+    points,
+    landedSlot: clampedSlot
+  };
 }
 
-// Main execution
-console.log('Starting Plinko path pre-computation...');
+// Main simulation: Generate paths for all slots
+function generateAllPaths(rows: number, pathsPerSlot: number = 100): Record<number, SimulatedPath[]> {
+  const pathsBySlot: Record<number, SimulatedPath[]> = {};
+  const canvasWidth = 600;
+  const centerX = canvasWidth / 2;
+  
+  // Initialize slots
+  for (let slot = 0; slot <= rows; slot++) {
+    pathsBySlot[slot] = [];
+  }
+  
+  console.log(`Generating paths for ${rows} rows...`);
+  
+  // Keep simulating until we have enough paths for each slot
+  let attempts = 0;
+  const maxAttempts = pathsPerSlot * (rows + 1) * 20;  // Generous limit
+  
+  while (attempts < maxAttempts) {
+    // Random start position near center (slight variation)
+    const startX = centerX + (Math.random() - 0.5) * 60;
+    
+    const result = simulateBallDrop(startX, rows, canvasWidth);
+    const slot = result.landedSlot;
+    
+    // Add if we need more paths for this slot
+    if (pathsBySlot[slot].length < pathsPerSlot) {
+      pathsBySlot[slot].push(result);
+    }
+    
+    attempts++;
+    
+    // Check if all slots have enough
+    const allFull = Object.values(pathsBySlot).every(paths => paths.length >= pathsPerSlot);
+    if (allFull) break;
+  }
+  
+  // Log stats
+  for (let slot = 0; slot <= rows; slot++) {
+    console.log(`  Slot ${slot}: ${pathsBySlot[slot].length} paths`);
+  }
+  
+  return pathsBySlot;
+}
 
-const simulations = {
-  8: runSimulation(8),
-  12: runSimulation(12)
-};
+// Run simulation for 8 and 12 rows
+const pathData: Record<string, Record<number, SimulatedPath[]>> = {};
 
-// Save results
+pathData['8'] = generateAllPaths(8, 200);
+pathData['12'] = generateAllPaths(12, 200);
+
+// Save to file
 const outputPath = path.join(__dirname, 'pathData.json');
-const outputData: Record<string, Array<{ slot: number; paths: SimulationResult[] }>> = {};
-
-for (const [rows, slotMap] of Object.entries(simulations)) {
-  outputData[rows] = Array.from(slotMap.entries()).map(([slot, paths]) => ({
-    slot,
-    paths
-  }));
-}
-
-fs.writeFileSync(outputPath, JSON.stringify(outputData, null, 2));
-console.log(`Path data saved to ${outputPath}`);
-console.log('Pre-computation complete!');
+fs.writeFileSync(outputPath, JSON.stringify(pathData, null, 2));
+console.log(`Saved path data to ${outputPath}`);
