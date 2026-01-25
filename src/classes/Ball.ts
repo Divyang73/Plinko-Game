@@ -128,14 +128,16 @@ export class Ball {
         this.y = sinkY * 1000; // Lock position at sink
         this.justLanded = true; // Set flag for animation trigger
         
-        // Debug logging
-        const expectedSlot = this.path.filter(d => d === 1).length;
-        console.log('[Ball landed]', {
-          path: this.path,
-          expectedSlot,
-          multiplier: this.multiplier,
-          payout: this.payout
-        });
+        // Debug logging (only in development - can be removed in production)
+        if (process.env.NODE_ENV !== 'production') {
+          const expectedSlot = this.path.filter(d => d === 1).length;
+          console.log('[Ball landed]', {
+            path: this.path,
+            expectedSlot,
+            multiplier: this.multiplier,
+            payout: this.payout
+          });
+        }
       }
     } else if (this.state === 'landed') {
       // Wait 500ms before fading
