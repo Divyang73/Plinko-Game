@@ -72,17 +72,43 @@ app.post('/api/bet', (req, res) => {
       }
     }
     
-    // If no pre-computed path found, generate a simple path based on slot position
-    if (path.length === 0) {
-      const middleSlot = rows / 2;
-      const deviation = slotIndex - middleSlot;
+    // If no pre-computed path found or path is invalid, generate a simple valid path
+    if (path.length === 0 || path.length !== rows) {
+      console.warn(`Generating fallback path for slot ${slotIndex}, rows ${rows}`);
       
+      // Generate a valid path that hits all rows
+      let currentSlot = 0;
       for (let i = 0; i < rows; i++) {
-        if (i < Math.abs(deviation)) {
-          path.push(deviation > 0 ? 1 : -1);
+        const remainingRows = rows - i - 1;
+        const slotsNeeded = slotIndex - currentSlot;
+        
+        let goRight: boolean;
+        if (remainingRows === 0) {
+          goRight = slotsNeeded > 0;
         } else {
-          path.push(Math.random() < 0.5 ? -1 : 1);
+          const needRightRatio = slotsNeeded / (remainingRows + 1);
+          const probability = Math.max(0, Math.min(1, needRightRatio + 0.5));
+          goRight = Math.random() < probability;
         }
+        
+        path.push(goRight ? 1 : -1);
+        if (goRight) currentSlot++;
+      }
+      
+      // Calculate starting position
+      const centerX = 300; // Canvas center in pixels
+      const normalizedTarget = (slotIndex / rows) - 0.5;
+      const startOffset = normalizedTarget * 40 * 0.8;
+      point = Math.round((centerX + startOffset) * 1000);
+    }
+    
+    // Final validation
+    if (path.length !== rows) {
+      console.error(`Invalid path length: ${path.length}, expected: ${rows}`);
+      // Fallback: simple path
+      path = [];
+      for (let i = 0; i < rows; i++) {
+        path.push(i < slotIndex ? 1 : -1);
       }
     }
     

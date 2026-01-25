@@ -10,7 +10,6 @@ interface BetControlsProps {
   rows: RowCount;
   setRows: (rows: RowCount) => void;
   onBet: () => void;
-  isPlaying: boolean;
   lastWin: number;
   lastMultiplier: number;
 }
@@ -24,7 +23,6 @@ export const BetControls: React.FC<BetControlsProps> = ({
   rows,
   setRows,
   onBet,
-  isPlaying,
   lastWin,
   lastMultiplier
 }) => {
@@ -81,22 +79,19 @@ export const BetControls: React.FC<BetControlsProps> = ({
         <div className="flex gap-2 mt-2">
           <button
             onClick={handleHalf}
-            disabled={isPlaying}
-            className="flex-1 bg-stake-light hover:bg-stake-dark text-white py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-stake-light hover:bg-stake-dark text-white py-2 rounded"
           >
             ½
           </button>
           <button
             onClick={handleDouble}
-            disabled={isPlaying}
-            className="flex-1 bg-stake-light hover:bg-stake-dark text-white py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-stake-light hover:bg-stake-dark text-white py-2 rounded"
           >
             2×
           </button>
           <button
             onClick={handleMax}
-            disabled={isPlaying}
-            className="flex-1 bg-stake-light hover:bg-stake-dark text-white py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-stake-light hover:bg-stake-dark text-white py-2 rounded"
           >
             Max
           </button>
@@ -111,7 +106,6 @@ export const BetControls: React.FC<BetControlsProps> = ({
             <button
               key={r}
               onClick={() => setRisk(r)}
-              disabled={isPlaying}
               className={`py-3 rounded font-semibold uppercase text-sm transition ${
                 risk === r
                   ? r === 'low'
@@ -120,7 +114,7 @@ export const BetControls: React.FC<BetControlsProps> = ({
                     ? 'bg-yellow-600 text-white'
                     : 'bg-red-600 text-white'
                   : 'bg-stake-light text-gray-400 hover:bg-stake-dark'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              }`}
             >
               {r}
             </button>
@@ -136,12 +130,11 @@ export const BetControls: React.FC<BetControlsProps> = ({
             <button
               key={r}
               onClick={() => setRows(r)}
-              disabled={isPlaying}
               className={`py-3 rounded font-semibold transition ${
                 rows === r
                   ? 'bg-blue-600 text-white'
                   : 'bg-stake-light text-gray-400 hover:bg-stake-dark'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              }`}
             >
               {r}
             </button>
@@ -152,10 +145,10 @@ export const BetControls: React.FC<BetControlsProps> = ({
       {/* Bet Button */}
       <button
         onClick={onBet}
-        disabled={isPlaying || betAmount <= 0 || betAmount > balance}
+        disabled={betAmount <= 0 || betAmount > balance}
         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-600 transition"
       >
-        {isPlaying ? 'Dropping...' : 'Bet'}
+        Bet
       </button>
     </div>
   );

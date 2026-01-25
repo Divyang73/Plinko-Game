@@ -1,4 +1,3 @@
-import React from 'react';
 import { GameCanvas } from './components/GameCanvas';
 import { BetControls } from './components/BetControls';
 import { useGame } from './hooks/useGame';
@@ -12,7 +11,6 @@ function App() {
     setRisk,
     rows,
     setRows,
-    isPlaying,
     lastWin,
     lastMultiplier,
     placeBet,
@@ -51,7 +49,6 @@ function App() {
             rows={rows}
             setRows={setRows}
             onBet={placeBet}
-            isPlaying={isPlaying}
             lastWin={lastWin}
             lastMultiplier={lastMultiplier}
           />
