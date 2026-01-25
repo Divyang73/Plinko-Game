@@ -31,6 +31,11 @@ export class Ball {
   // Layout constants (must match GameCanvas)
   private readonly FIRST_ROW_Y = 100;
   private readonly ROW_SPACING = 40;
+  private readonly SLOT_WIDTH = 40;
+  
+  // Position correction constants
+  private readonly CORRECTION_STRENGTH = 0.25;
+  private readonly VELOCITY_DAMPING = 0.7;
   
   // Trail effect
   private trail: Array<{ x: number; y: number; alpha: number }> = [];
@@ -129,15 +134,11 @@ export class Ball {
       
       // AFTER all rows processed, guide ball toward correct slot
       if (this.lastRowProcessed >= this.rows - 1) {
-        const slotWidth = 40;
-        const totalSlots = this.rows + 1;
-        const totalWidth = totalSlots * slotWidth;
-        const startX = (canvasWidth / 2 - totalWidth / 2 + slotWidth / 2) * 1000;
-        const targetX = startX + this.slotIndex * slotWidth * 1000;
+        const targetX = this.getSlotCenterX(canvasWidth);
         
         // Strong lerp toward target slot
-        this.x += (targetX - this.x) * 0.25;
-        this.vx *= 0.7;
+        this.x += (targetX - this.x) * this.CORRECTION_STRENGTH;
+        this.vx *= this.VELOCITY_DAMPING;
       }
       
       // Check if reached sink
@@ -149,11 +150,7 @@ export class Ball {
         this.y = sinkY * 1000;
         
         // Force final position to exact slot center
-        const slotWidth = 40;
-        const totalSlots = this.rows + 1;
-        const totalWidth = totalSlots * slotWidth;
-        const startX = (canvasWidth / 2 - totalWidth / 2 + slotWidth / 2) * 1000;
-        this.x = startX + this.slotIndex * slotWidth * 1000;
+        this.x = this.getSlotCenterX(canvasWidth);
         
         this.justLanded = true;
         
@@ -185,14 +182,21 @@ export class Ball {
     return this.state === 'finished';
   }
   
+  // Calculate the target X position for a given slot
+  private getSlotCenterX(canvasWidth: number): number {
+    const totalSlots = this.rows + 1;
+    const totalWidth = totalSlots * this.SLOT_WIDTH;
+    const startX = (canvasWidth / 2 - totalWidth / 2 + this.SLOT_WIDTH / 2) * 1000;
+    return startX + this.slotIndex * this.SLOT_WIDTH * 1000;
+  }
+  
   getSinkIndex(rows: number, canvasWidth: number): number {
-    const slotWidth = 40;
     const slotCount = rows + 1;
-    const totalWidth = slotCount * slotWidth;
-    const startX = (canvasWidth / 2 - totalWidth / 2 + slotWidth / 2) * 1000;
+    const totalWidth = slotCount * this.SLOT_WIDTH;
+    const startX = (canvasWidth / 2 - totalWidth / 2 + this.SLOT_WIDTH / 2) * 1000;
     
     const relativeX = this.x - startX;
-    const slotIndex = Math.round(relativeX / (slotWidth * 1000));
+    const slotIndex = Math.round(relativeX / (this.SLOT_WIDTH * 1000));
     return Math.max(0, Math.min(rows, slotIndex));
   }
   
