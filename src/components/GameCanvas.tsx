@@ -131,8 +131,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    const slotY = (rows + 1) * VERTICAL_SPACING + 100;
-    
     const animate = () => {
       // Clear canvas
       ctx.fillStyle = '#0f212e';
