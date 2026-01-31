@@ -29,7 +29,16 @@ export const BetControls: React.FC<BetControlsProps> = ({
   onOpenMode
 }) => {
   const hasBallsDropping = activeBallsCount > 0;
-  const controlsDisabled = playWithStars ? hasBallsDropping : false;
+  
+  // Risk and Rows are locked when balls are dropping in BOTH modes
+  const riskRowsDisabled = hasBallsDropping;
+  
+  // Bet amount controls: locked only in Stars mode when balls dropping
+  const betAmountDisabled = playWithStars && hasBallsDropping;
+  
+  // Bet button: 
+  // - Stars mode: disabled when balls dropping (no multi-bet)
+  // - Classic mode: always enabled if valid bet (multi-bet allowed)
   const betDisabled = betAmount <= 0 || betAmount > balance || (playWithStars && hasBallsDropping);
   
   const handleHalf = () => {
@@ -50,7 +59,7 @@ export const BetControls: React.FC<BetControlsProps> = ({
   };
   
   return (
-    <div className={`w-80 glass-panel p-6 rounded-2xl space-y-6 ${controlsDisabled ? 'control-disabled' : ''}`}>
+    <div className="w-80 glass-panel p-6 rounded-2xl space-y-6">
       <div className="stat-box">
         <div className="text-xs text-slate-300 uppercase tracking-wide">Balance</div>
         <div className="text-3xl font-bold text-white">${balance.toFixed(2)}</div>
@@ -64,7 +73,11 @@ export const BetControls: React.FC<BetControlsProps> = ({
               {playWithStars ? 'Stars ON' : 'Classic'}
             </div>
           </div>
-          <button className="btn-secondary px-4 py-2 text-xs" onClick={onOpenMode}>
+          <button 
+            className="btn-secondary px-4 py-2 text-xs" 
+            onClick={onOpenMode}
+            disabled={hasBallsDropping}
+          >
             Change
           </button>
         </div>
@@ -75,7 +88,7 @@ export const BetControls: React.FC<BetControlsProps> = ({
         </p>
       </div>
       
-      <div>
+      <div className={betAmountDisabled ? 'control-disabled' : ''}>
         <label className="block text-slate-300 text-sm mb-2">Bet Amount</label>
         <input
           type="number"
@@ -84,24 +97,24 @@ export const BetControls: React.FC<BetControlsProps> = ({
           step="0.01"
           min="0.01"
           max={balance}
-          disabled={controlsDisabled}
+          disabled={betAmountDisabled}
           className="w-full bg-slate-950/70 text-white px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-emerald-400/60 transition"
         />
         <div className="flex gap-2 mt-2">
-          <button onClick={handleHalf} className="flex-1 btn-secondary">½</button>
-          <button onClick={handleDouble} className="flex-1 btn-secondary">2×</button>
-          <button onClick={handleMax} className="flex-1 btn-secondary">Max</button>
+          <button onClick={handleHalf} disabled={betAmountDisabled} className="flex-1 btn-secondary">½</button>
+          <button onClick={handleDouble} disabled={betAmountDisabled} className="flex-1 btn-secondary">2×</button>
+          <button onClick={handleMax} disabled={betAmountDisabled} className="flex-1 btn-secondary">Max</button>
         </div>
       </div>
       
-      <div>
+      <div className={riskRowsDisabled ? 'control-disabled' : ''}>
         <label className="block text-slate-300 text-sm mb-2">Risk</label>
         <div className="grid grid-cols-3 gap-2">
           {(['low', 'medium', 'high'] as RiskLevel[]).map((r) => (
             <button
               key={r}
               onClick={() => setRisk(r)}
-              disabled={controlsDisabled}
+              disabled={riskRowsDisabled}
               className={`pill-button py-3 font-semibold uppercase text-xs transition ${
                 risk === r
                   ? r === 'low'
@@ -118,14 +131,14 @@ export const BetControls: React.FC<BetControlsProps> = ({
         </div>
       </div>
       
-      <div>
+      <div className={riskRowsDisabled ? 'control-disabled' : ''}>
         <label className="block text-slate-300 text-sm mb-2">Rows</label>
         <div className="grid grid-cols-2 gap-2">
           {([8, 12] as RowCount[]).map((r) => (
             <button
               key={r}
               onClick={() => setRows(r)}
-              disabled={controlsDisabled}
+              disabled={riskRowsDisabled}
               className={`pill-button py-3 font-semibold transition ${
                 rows === r ? 'btn-rows-active' : 'btn-muted'
               }`}

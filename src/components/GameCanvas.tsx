@@ -113,17 +113,69 @@ const getMultipliers = (rows: RowCount, risk: RiskLevel, playWithStars: boolean)
 };
 
 const getSinkPalette = (multiplier: number, playWithStars: boolean) => {
-  const tier = multiplier >= 10 ? 'high' : multiplier >= 2 ? 'mid' : 'low';
-
-  if (playWithStars) {
-    if (tier === 'high') return { fill: 'rgba(255, 196, 72, 0.3)', edge: 'rgba(255, 218, 140, 0.85)', hue: 48 };
-    if (tier === 'mid') return { fill: 'rgba(0, 231, 255, 0.2)', edge: 'rgba(120, 242, 255, 0.75)', hue: 190 };
-    return { fill: 'rgba(140, 160, 190, 0.18)', edge: 'rgba(160, 180, 210, 0.6)', hue: 210 };
+  // Stake-style granular multiplier tiers for sink colors
+  if (multiplier >= 100) {
+    // Jackpot tier - Blue/Purple
+    return { 
+      fill: 'rgba(147, 51, 234, 0.35)', 
+      edge: 'rgba(192, 132, 252, 0.9)', 
+      hue: 270 
+    };
   }
-
-  if (tier === 'high') return { fill: 'rgba(255, 86, 120, 0.22)', edge: 'rgba(255, 136, 176, 0.75)', hue: 330 };
-  if (tier === 'mid') return { fill: 'rgba(0, 200, 150, 0.18)', edge: 'rgba(120, 240, 200, 0.6)', hue: 165 };
-  return { fill: 'rgba(120, 140, 170, 0.18)', edge: 'rgba(160, 180, 200, 0.6)', hue: 200 };
+  if (multiplier >= 25) {
+    // Very high - Cyan/Teal
+    return { 
+      fill: 'rgba(6, 182, 212, 0.3)', 
+      edge: 'rgba(34, 211, 238, 0.85)', 
+      hue: 185 
+    };
+  }
+  if (multiplier >= 10) {
+    // High wins - Green
+    return { 
+      fill: 'rgba(0, 231, 1, 0.28)', 
+      edge: 'rgba(74, 255, 74, 0.85)', 
+      hue: 120 
+    };
+  }
+  if (multiplier >= 5) {
+    // Good wins - Yellow-Green
+    return { 
+      fill: 'rgba(163, 230, 53, 0.25)', 
+      edge: 'rgba(190, 242, 100, 0.8)', 
+      hue: 80 
+    };
+  }
+  if (multiplier >= 2) {
+    // Moderate wins - Yellow
+    return { 
+      fill: 'rgba(255, 192, 0, 0.25)', 
+      edge: 'rgba(255, 220, 80, 0.85)', 
+      hue: 45 
+    };
+  }
+  if (multiplier >= 1) {
+    // Break-even to low - Orange
+    return { 
+      fill: 'rgba(255, 140, 0, 0.22)', 
+      edge: 'rgba(255, 180, 80, 0.8)', 
+      hue: 30 
+    };
+  }
+  if (multiplier >= 0.5) {
+    // Low return - Red/Orange
+    return { 
+      fill: 'rgba(255, 80, 50, 0.22)', 
+      edge: 'rgba(255, 120, 90, 0.75)', 
+      hue: 15 
+    };
+  }
+  // Losing sinks (< 0.5x) - Deep Red/Maroon
+  return { 
+    fill: 'rgba(220, 38, 38, 0.25)', 
+    edge: 'rgba(248, 113, 113, 0.8)', 
+    hue: 0 
+  };
 };
 
 const drawStarShape = (ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, innerRadius: number) => {
