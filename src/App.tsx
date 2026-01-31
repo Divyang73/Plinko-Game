@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { GameCanvas } from './components/GameCanvas';
 import { BetControls } from './components/BetControls';
+import { GameplayMode } from './components/GameplayMode';
+import { WinsQueue } from './components/WinsQueue';
 import { useGame } from './hooks/useGame';
 
 function App() {
@@ -11,36 +14,63 @@ function App() {
     setRisk,
     rows,
     setRows,
-    lastWin,
-    lastMultiplier,
     placeBet,
     handleBallLanded,
     dropBall,
-    activeBallsCount
+    activeBallsCount,
+    playWithStars,
+    setPlayWithStars,
+    lastWins
   } = useGame();
+
+  const [showMode, setShowMode] = useState(true);
+  
+  const handleModeSelect = (mode: 'stars' | 'classic') => {
+    setPlayWithStars(mode === 'stars');
+    setShowMode(false);
+  };
   
   return (
-    <div className="min-h-screen bg-stake-dark text-white">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">Plinko</h1>
-          <p className="text-gray-400">Stake Game Replica</p>
+    <div className="min-h-screen casino-bg text-white">
+      <GameplayMode
+        isOpen={showMode}
+        mode={playWithStars ? 'stars' : 'classic'}
+        onSelect={handleModeSelect}
+        onClose={() => setShowMode(false)}
+      />
+      <div className="container mx-auto px-4 py-10">
+        <header className="text-center mb-10 flex flex-col items-center gap-3">
+          <div className="flex items-center gap-4">
+            <div className="logo-dots">
+              <span className="logo-dot dot-1" />
+              <span className="logo-dot dot-2" />
+              <span className="logo-dot dot-3" />
+            </div>
+            <h1 className="plinko-logo">PLINKO</h1>
+            <div className="logo-dots">
+              <span className="logo-dot dot-3" />
+              <span className="logo-dot dot-2" />
+              <span className="logo-dot dot-1" />
+            </div>
+          </div>
+          <p className="text-slate-300 text-sm tracking-wide">
+            Casino-grade drops • star bonus • near-miss psychology
+          </p>
         </header>
         
-        {/* Game Area */}
-        <div className="flex flex-col lg:flex-row items-start justify-center gap-8">
-          {/* Canvas */}
+        <div className="flex flex-col lg:flex-row items-start justify-center gap-10">
+          <WinsQueue wins={lastWins} />
+          
           <div className="flex-shrink-0">
             <GameCanvas
               rows={rows}
               risk={risk}
               onBallLanded={handleBallLanded}
               dropBall={dropBall}
+              playWithStars={playWithStars}
             />
           </div>
           
-          {/* Controls */}
           <BetControls
             balance={balance}
             betAmount={betAmount}
@@ -50,16 +80,15 @@ function App() {
             rows={rows}
             setRows={setRows}
             onBet={placeBet}
-            lastWin={lastWin}
-            lastMultiplier={lastMultiplier}
             activeBallsCount={activeBallsCount}
+            playWithStars={playWithStars}
+            onOpenMode={() => setShowMode(true)}
           />
         </div>
         
-        {/* Footer */}
-        <footer className="text-center mt-12 text-gray-500 text-sm">
-          <p>Built with React, TypeScript, and Canvas API</p>
-          <p className="mt-2">Deterministic physics with integer math (×1000 scale factor)</p>
+        <footer className="text-center mt-12 text-slate-400 text-xs">
+          <p>React • TypeScript • Canvas. Casino-grade animation & payout math.</p>
+          <p className="mt-2">Star bonus is enforced at 5% per slot, with RTP-adjusted multipliers.</p>
         </footer>
       </div>
     </div>

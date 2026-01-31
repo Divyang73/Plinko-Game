@@ -11,6 +11,14 @@ export interface BetRequest {
   betAmount: number;
   risk: RiskLevel;
   rows: RowCount;
+  playWithStars: boolean;
+}
+
+export interface StarBonus {
+  x: number;
+  y: number;
+  collected: boolean;
+  bonusAmount: number;
 }
 
 export interface BetResponse {
@@ -19,6 +27,7 @@ export interface BetResponse {
   payout: number;
   animationPath: PathPoint[];
   startX: number;
+  star: StarBonus;
 }
 
 export interface Pin {

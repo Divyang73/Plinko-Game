@@ -1,24 +1,42 @@
 import { useState } from 'react';
 import type { RiskLevel, RowCount, BetRequest, BetResponse } from '../types';
 
+interface WinEntry {
+  id: string;
+  amount: number;
+  multiplier: number;
+}
+
+const buildInitialWins = (): WinEntry[] =>
+  Array.from({ length: 5 }, (_, index) => ({
+    id: `init-${index}`,
+    amount: 0,
+    multiplier: 0
+  }));
+
 export const useGame = () => {
   const [balance, setBalance] = useState(1000);
   const [betAmount, setBetAmount] = useState(1);
   const [risk, setRisk] = useState<RiskLevel>('low');
   const [rows, setRows] = useState<RowCount>(8);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [lastWin, setLastWin] = useState(0);
-  const [lastMultiplier, setLastMultiplier] = useState(0);
-  const [dropBall, setDropBall] = useState<{ animationPath: Array<{x: number, y: number, t: number}>; multiplier: number; payout: number; slotIndex: number } | null>(null);
+  const [playWithStars, setPlayWithStars] = useState(true);
+  const [lastWins, setLastWins] = useState<WinEntry[]>(buildInitialWins());
+  const [dropBall, setDropBall] = useState<{
+    animationPath: Array<{ x: number; y: number; t: number }>;
+    multiplier: number;
+    payout: number;
+    slotIndex: number;
+    star: BetResponse['star'];
+  } | null>(null);
   const [activeBallsCount, setActiveBallsCount] = useState(0);
   
   const placeBet = async () => {
     if (betAmount > balance || betAmount <= 0) return;
+    if (playWithStars && activeBallsCount > 0) return;
     
     setIsPlaying(true);
-    setLastWin(0);
     
-    // Deduct bet from balance immediately
     setBalance(prev => prev - betAmount);
     setActiveBallsCount(prev => prev + 1);
     
@@ -26,7 +44,8 @@ export const useGame = () => {
       const request: BetRequest = {
         betAmount,
         risk,
-        rows
+        rows,
+        playWithStars
       };
       
       const response = await fetch('/api/bet', {
@@ -43,20 +62,18 @@ export const useGame = () => {
       
       const data: BetResponse = await response.json();
       
-      // Trigger ball drop - add to array, don't replace
       setDropBall({
         animationPath: data.animationPath,
         multiplier: data.multiplier,
         payout: data.payout,
-        slotIndex: data.slotIndex
+        slotIndex: data.slotIndex,
+        star: data.star
       });
       
-      // Reset dropBall after a short delay to allow effect to fire
       setTimeout(() => setDropBall(null), 50);
       
     } catch (error) {
       console.error('Bet error:', error);
-      // Refund bet on error
       setBalance(prev => prev + betAmount);
       setActiveBallsCount(prev => Math.max(0, prev - 1));
     }
@@ -64,13 +81,13 @@ export const useGame = () => {
   
   const handleBallLanded = (_ballId: string, multiplier: number, payout: number) => {
     setBalance(prev => prev + payout);
-    setLastWin(payout);
-    setLastMultiplier(multiplier);
+    setLastWins(prev => [
+      { id: `win-${Date.now()}-${Math.random().toString(36).slice(2)}`, amount: payout, multiplier },
+      ...prev
+    ].slice(0, 5));
     
-    // Decrement active balls count
     setActiveBallsCount(prev => {
       const newCount = Math.max(0, prev - 1);
-      // Set isPlaying to false when no more active balls
       if (newCount === 0) {
         setIsPlaying(false);
       }
@@ -87,11 +104,12 @@ export const useGame = () => {
     rows,
     setRows,
     isPlaying,
-    lastWin,
-    lastMultiplier,
     placeBet,
     handleBallLanded,
     dropBall,
-    activeBallsCount
+    activeBallsCount,
+    playWithStars,
+    setPlayWithStars,
+    lastWins
   };
 };
