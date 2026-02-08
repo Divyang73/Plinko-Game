@@ -1,29 +1,39 @@
-# 🎮 Plinko Game - Stake Replica
+# 🎮 Plinko Game - Enhanced Casino Experience
 
-A fully functional, production-ready replica of the "Stake Plinko" game built with React, TypeScript, and Node.js.
+A fully functional, production-ready Plinko game with casino-grade animations, dual gameplay modes, and advanced visual effects. Built with React, TypeScript, and Node.js.
 
 ![Plinko Game](https://github.com/user-attachments/assets/15fdeed5-11fc-4ba9-943e-d1fc2d8a1ea1)
 
 ## ✨ Features
 
+### Gameplay Modes
+- **Stars ON Mode**: Radiant stars with 5% chance per slot to collect bonus, cinematic animations, and RTP-adjusted multipliers
+- **Classic Mode**: Clean casino style, fast multi-bets, no stars - pure Plinko action
+- **Mode Selection**: Choose your experience on startup or switch anytime for a different vibe
+- **Near-Miss Psychology**: Engaging gameplay mechanics that enhance player experience
+
 ### Core Gameplay
-- **Deterministic Backend**: Server decides outcomes using binomial distribution
+- **Deterministic Backend**: Server decides outcomes using binomial distribution with house edge
 - **Integer Physics Engine**: ×1000 scale factor for consistent cross-device behavior
 - **Pre-computed Paths**: Ball trajectories calculated in advance for guaranteed outcomes
 - **60fps Canvas Rendering**: Smooth animations with requestAnimationFrame
 
 ### Game Configuration
 - **3 Risk Levels**: Low (🟢 Green), Medium (🟡 Yellow), High (🔴 Red)
-- **3 Row Options**: 8, 12, or 16 rows
-- **Stake-Accurate Multipliers**: Exact multiplier tables matching Stake's values
+- **2 Row Options**: 8 or 12 rows
+- **Accurate Multipliers**: Professional multiplier tables with house edge balancing
 - **Bet Controls**: Half, Double, and Max buttons for quick betting
 
-### Visual Design
-- **Dark Theme**: Authentic Stake color scheme (#0f212e background)
+### Visual Design & Effects
+- **Loading Screen**: Welcome animation with fuzzy text effects and progress bar
+- **Wins Queue**: Live display of recent wins with color-coded multiplier tiers (blue → epic)
+- **Shiny Text**: Animated gradient text for headers and branding
+- **Fuzzy Text**: Dynamic text distortion effects for emphasis
+- **Dark Theme**: Professional casino color scheme (#0f212e background)
 - **Dynamic Ball Colors**: Changes based on selected risk level
 - **Glowing Effects**: Ball trails and glow effects for visual polish
 - **Multiplier Pulse**: Winning slots pulse and highlight on ball landing
-- **Win Display**: Green-highlighted box showing last win and multiplier
+- **Win Display**: Color-coded boxes showing recent wins with multiplier tiers
 
 ## 🚀 Quick Start
 
@@ -66,20 +76,25 @@ Frontend starts on http://localhost:5173
 ```
 ├── server/
 │   ├── index.ts          # Express server with /api/bet endpoint
-│   ├── gameLogic.ts      # Binomial distribution & multiplier logic
+│   ├── gameLogic.ts      # Binomial distribution, multiplier logic & star bonus system
 │   ├── simulate.ts       # Pre-computation script for ball paths
 │   └── pathData.json     # Generated path data (git-ignored)
 ├── src/
 │   ├── main.tsx          # React entry point
-│   ├── App.tsx           # Main application component
-│   ├── index.css         # TailwindCSS styles
+│   ├── App.tsx           # Main application component with mode selection
+│   ├── index.css         # TailwindCSS styles with custom animations
 │   ├── classes/
 │   │   └── Ball.ts       # Integer physics ball class
 │   ├── components/
-│   │   ├── GameCanvas.tsx     # Canvas rendering & animation
-│   │   └── BetControls.tsx    # Betting UI controls
+│   │   ├── GameCanvas.tsx      # Canvas rendering & animation
+│   │   ├── BetControls.tsx     # Betting UI controls
+│   │   ├── GameplayMode.tsx    # Mode selection dialog (Stars ON/Classic)
+│   │   ├── WinsQueue.tsx       # Recent wins display with color tiers
+│   │   ├── LoadingScreen.tsx   # Welcome screen with progress animation
+│   │   ├── ShinyText.tsx       # Animated gradient text effect
+│   │   └── FuzzyText.tsx       # Dynamic text distortion effect
 │   ├── hooks/
-│   │   └── useGame.ts         # Game state management
+│   │   └── useGame.ts         # Game state management with star bonus
 │   └── types/
 │       └── index.ts           # TypeScript type definitions
 ├── package.json
@@ -90,13 +105,31 @@ Frontend starts on http://localhost:5173
 
 ## 🎯 Technical Implementation
 
+### Dual Gameplay Modes
+The game offers two distinct experiences:
+
+**Stars ON Mode:**
+- 5% chance per slot to collect a star bonus
+- Star bonus multiplier: 0.5x of bet amount
+- All multipliers are RTP-adjusted by factor of `1 - (0.05 * 0.5) = 0.975`
+- Cinematic animations and radiant visual effects
+- Enhanced engagement through bonus collection mechanics
+
+**Classic Mode:**
+- Pure Plinko gameplay without stars
+- Standard multipliers without RTP adjustment
+- Fast multi-bet capability for experienced players
+- Clean casino aesthetic
+
 ### Deterministic System
 The backend determines the outcome before the ball drops:
-1. Client places bet with risk level and row count
+1. Client places bet with risk level, row count, and gameplay mode
 2. Server selects slot using binomial distribution with house edge
-3. Server looks up pre-computed path for that slot
-4. Server returns: `{ point, multiplier, slotIndex, path, payout }`
-5. Client animates ball following the predetermined path
+3. Server generates star bonus (if Stars ON mode is enabled)
+4. Server looks up pre-computed path for that slot
+5. Server returns: `{ slotIndex, multiplier, payout, animationPath, startX, star }`
+6. Client animates ball following the predetermined path
+7. Client displays star collection if applicable
 
 ### Integer Physics (×1000 Scale)
 All physics calculations use integers multiplied by 1000:
@@ -125,10 +158,7 @@ Run `npm run simulate` to generate path data:
 - **Medium**: 33, 11, 4, 2, 1.1, 0.6, 0.3, 0.6, 1.1, 2, 4, 11, 33
 - **High**: 170, 24, 8.1, 2, 0.7, 0.2, 0.2, 0.2, 0.7, 2, 8.1, 24, 170
 
-### 16 Rows
-- **Low**: 16, 9, 2, 1.4, 1.4, 1.2, 1.1, 1.0, 0.5, 1.0, 1.1, 1.2, 1.4, 1.4, 2, 9, 16
-- **Medium**: 110, 41, 10, 5, 3, 1.5, 1, 0.5, 0.3, 0.5, 1, 1.5, 3, 5, 10, 41, 110
-- **High**: 1000, 130, 26, 9, 4, 2, 0.2, 0.2, 0.2, 0.2, 0.2, 2, 4, 9, 26, 130, 1000
+**Note:** When Stars ON mode is enabled, all multipliers are adjusted by a factor of 0.975 to maintain balanced RTP while accounting for the 5% chance per slot of collecting a star bonus.
 
 ## 🔧 API Documentation
 
@@ -141,26 +171,37 @@ Place a bet and receive ball drop instructions.
 {
   "betAmount": 10,
   "risk": "low",
-  "rows": 8
+  "rows": 8,
+  "playWithStars": true
 }
 ```
 
 **Response:**
 ```json
 {
-  "point": 300000,
-  "multiplier": 5.6,
   "slotIndex": 0,
-  "path": [-1, 1, -1, 1, -1, 1, -1, 1],
-  "payout": 56
+  "multiplier": 5.46,
+  "payout": 54.6,
+  "animationPath": [
+    { "x": 300000, "y": 0, "t": 0 },
+    { "x": 295000, "y": 50000, "t": 100 }
+  ],
+  "startX": 300000,
+  "star": {
+    "x": 300000,
+    "y": 150000,
+    "collected": false,
+    "bonusAmount": 5
+  }
 }
 ```
 
-- `point`: Starting X position (×1000 scale)
-- `multiplier`: Winning multiplier
 - `slotIndex`: Final slot (0-indexed)
-- `path`: Bounce directions (-1 = left, 1 = right)
+- `multiplier`: Winning multiplier (RTP-adjusted if Stars ON)
 - `payout`: Total payout amount
+- `animationPath`: Array of {x, y, t} points for smooth ball animation
+- `startX`: Starting X position (×1000 scale)
+- `star`: Star bonus data (position, collection status, bonus amount)
 
 ### GET /api/health
 
@@ -174,6 +215,23 @@ Health check endpoint.
 }
 ```
 
+## 🎨 Visual Features
+
+### Color-Coded Multiplier Tiers
+The wins queue displays recent wins with dynamic color coding:
+- **Blue** (`< 1x`): Low multiplier
+- **Light Blue** (`1x - 2x`): Break-even to small win
+- **Green** (`2x - 5x`): Good win
+- **Yellow** (`5x - 10x`): Great win
+- **Orange** (`10x - 25x`): Excellent win
+- **Red** (`25x - 100x`): Amazing win
+- **Epic** (`100x+`): Legendary win
+
+### Text Effects
+- **ShinyText**: Animated linear gradient effect that moves across text
+- **FuzzyText**: Dynamic distortion effect with customizable intensity
+- Used throughout the UI for enhanced visual appeal and player engagement
+
 ## 🛠️ Development
 
 ### Build for Production
@@ -184,8 +242,10 @@ npm run build
 ### Technologies Used
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS
 - **Backend**: Node.js, Express, TypeScript
-- **Physics**: Custom integer-based physics engine
-- **Graphics**: HTML5 Canvas API
+- **Physics**: Custom integer-based physics engine (×1000 scale)
+- **Graphics**: HTML5 Canvas API with 60fps rendering
+- **Effects**: Custom ShinyText and FuzzyText components
+- **State Management**: React Hooks (useState, useEffect, custom hooks)
 
 ## 📝 License
 
@@ -193,4 +253,4 @@ MIT License - feel free to use this project for learning or commercial purposes.
 
 ## 🙏 Acknowledgments
 
-Inspired by the original Stake Plinko game. This is an educational recreation demonstrating deterministic game mechanics and client-server architecture.
+This project demonstrates advanced web game development techniques including deterministic gameplay, client-server architecture, dual gameplay modes, and casino-grade visual effects. Built as an educational recreation showcasing professional game development patterns and engaging user experience design.
