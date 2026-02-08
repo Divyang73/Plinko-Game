@@ -24,7 +24,7 @@ export class Ball {
   
   // Trail effect
   private trail: Array<{ x: number; y: number; alpha: number }> = [];
-  private readonly MAX_TRAIL_LENGTH = 12;
+  private readonly MAX_TRAIL_LENGTH = 10; // Reduced from 12 (16.7% reduction)
   
   constructor(
     animationPath: PathPoint[],
@@ -68,7 +68,7 @@ export class Ball {
         this.trail.shift();
       }
       this.trail.forEach((point, index) => {
-        point.alpha = (index + 1) / this.trail.length * 0.5;
+        point.alpha = (index + 1) / this.trail.length * 0.4; // Reduced from 0.5 (20% reduction)
       });
       
       // Check if animation complete
