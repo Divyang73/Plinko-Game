@@ -7,7 +7,7 @@ A fully functional, production-ready Plinko game with casino-grade animations, d
 ## ✨ Features
 
 ### Gameplay Modes
-- **Stars ON Mode**: Radiant stars with 5% bonus collection, cinematic animations, and RTP-adjusted multipliers
+- **Stars ON Mode**: Radiant stars with 5% chance per slot to collect bonus, cinematic animations, and RTP-adjusted multipliers
 - **Classic Mode**: Clean casino style, fast multi-bets, no stars - pure Plinko action
 - **Mode Selection**: Choose your experience on startup or switch anytime for a different vibe
 - **Near-Miss Psychology**: Engaging gameplay mechanics that enhance player experience
@@ -111,7 +111,7 @@ The game offers two distinct experiences:
 **Stars ON Mode:**
 - 5% chance per slot to collect a star bonus
 - Star bonus multiplier: 0.5x of bet amount
-- All multipliers are RTP-adjusted by factor of `1 - (0.05 × 0.5) = 0.975`
+- All multipliers are RTP-adjusted by factor of `1 - (0.05 * 0.5) = 0.975`
 - Cinematic animations and radiant visual effects
 - Enhanced engagement through bonus collection mechanics
 
@@ -158,7 +158,7 @@ Run `npm run simulate` to generate path data:
 - **Medium**: 33, 11, 4, 2, 1.1, 0.6, 0.3, 0.6, 1.1, 2, 4, 11, 33
 - **High**: 170, 24, 8.1, 2, 0.7, 0.2, 0.2, 0.2, 0.7, 2, 8.1, 24, 170
 
-**Note:** When Stars ON mode is enabled, all multipliers are adjusted by a factor of 0.975 to maintain balanced RTP while accounting for the 5% star bonus collection rate.
+**Note:** When Stars ON mode is enabled, all multipliers are adjusted by a factor of 0.975 to maintain balanced RTP while accounting for the 5% chance per slot of collecting a star bonus.
 
 ## 🔧 API Documentation
 
