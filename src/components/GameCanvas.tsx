@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Ball } from '../classes/Ball';
 import type { RiskLevel, RowCount, StarBonus } from '../types';
 
@@ -270,6 +270,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
   const glitterRef = useRef<GlitterParticle[]>([]);
   const sinkDustRef = useRef<SinkParticle[]>([]);
   const lastFrameRef = useRef<number>(performance.now());
+  const [hoveredSink, setHoveredSink] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -613,12 +615,94 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
     };
   }, [rows, risk, onBallLanded, playWithStars]);
   
+  // Handle mouse movement for sink tooltips
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      let foundSink = -1;
+      sinksRef.current.forEach((sink, index) => {
+        const sinkY = sink.baseY;
+        const distance = Math.hypot(mouseX - sink.x, mouseY - sinkY);
+        
+        if (distance < 20) {
+          foundSink = index;
+        }
+      });
+      
+      if (foundSink !== -1) {
+        setHoveredSink(foundSink);
+        setTooltipPos({ x: e.clientX, y: e.clientY });
+      } else {
+        setHoveredSink(null);
+        setTooltipPos(null);
+      }
+    };
+    
+    const handleMouseLeave = () => {
+      setHoveredSink(null);
+      setTooltipPos(null);
+    };
+    
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [rows, risk, playWithStars]);
+  
+  // Calculate probability for a sink based on binomial distribution
+  const getSinkProbability = (sinkIndex: number, totalSinks: number): number => {
+    // Simple binomial probability approximation
+    const n = totalSinks - 1; // number of rows
+    const k = sinkIndex; // position
+    const p = 0.5; // probability of going left or right
+    
+    // Binomial coefficient
+    const binomialCoeff = (n: number, k: number): number => {
+      if (k < 0 || k > n) return 0;
+      if (k === 0 || k === n) return 1;
+      
+      let result = 1;
+      for (let i = 1; i <= k; i++) {
+        result *= (n - i + 1) / i;
+      }
+      return result;
+    };
+    
+    const probability = binomialCoeff(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k);
+    return Math.round(probability * 1000) / 10; // Convert to percentage with 1 decimal
+  };
+  
   return (
-    <canvas
-      ref={canvasRef}
-      width={600}
-      height={700}
-      className="canvas-frame"
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        width={600}
+        height={700}
+        className="canvas-frame"
+      />
+      {hoveredSink !== null && tooltipPos && (
+        <div
+          className="sink-tooltip"
+          style={{
+            left: `${tooltipPos.x + 10}px`,
+            top: `${tooltipPos.y - 30}px`,
+          }}
+        >
+          <div>Multiplier: {sinksRef.current[hoveredSink]?.multiplier}x</div>
+          <div className="text-xs text-slate-400 mt-1">
+            Probability: {getSinkProbability(hoveredSink, sinksRef.current.length)}%
+          </div>
+        </div>
+      )}
+    </>
   );
 };
