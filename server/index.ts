@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -142,12 +142,6 @@ app.post('/api/bet', requireAuth, async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
 // Serve frontend static files in production
 const distPath = path.join(__dirname, '../dist');
 if (fs.existsSync(distPath)) {
@@ -158,3 +152,7 @@ if (fs.existsSync(distPath)) {
 } else {
   console.log('Frontend dist folder not found. API running in dev mode.');
 }
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
