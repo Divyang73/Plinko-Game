@@ -14,9 +14,6 @@ export const MULTIPLIERS: Record<RowCount, Record<RiskLevel, number[]>> = {
   
 };
 
-const HOUSE_EDGE_BOOST = 1.05;
-const HOUSE_EDGE_PENALTY = 0.05;
-
 function binomialCoefficient(n: number, k: number): number {
   if (k < 0 || k > n) return 0;
   if (k === 0 || k === n) return 1;
@@ -45,28 +42,14 @@ export function calculateSlotProbabilities(rows: RowCount): number[] {
 
 export function selectSlot(rows: RowCount, risk: RiskLevel): number {
   const probabilities = calculateSlotProbabilities(rows);
-  const multipliers = MULTIPLIERS[rows][risk];
-  
-  const adjustedProbabilities = probabilities.map((prob, index) => {
-    const multiplier = multipliers[index];
-    const adjustment = multiplier < 1 ? HOUSE_EDGE_BOOST : 1 / (1 + Math.log10(multiplier) * HOUSE_EDGE_PENALTY);
-    return prob * adjustment;
-  });
-  
-  const total = adjustedProbabilities.reduce((sum, p) => sum + p, 0);
-  const normalizedProbs = adjustedProbabilities.map(p => p / total);
   
   const random = Math.random();
   let cumulative = 0;
-  
-  for (let i = 0; i < normalizedProbs.length; i++) {
-    cumulative += normalizedProbs[i];
-    if (random <= cumulative) {
-      return i;
-    }
+  for (let i = 0; i < probabilities.length; i++) {
+    cumulative += probabilities[i];
+    if (random <= cumulative) return i;
   }
-  
-  return Math.floor(normalizedProbs.length / 2);
+  return Math.floor(probabilities.length / 2);
 }
 
 export function getMultiplier(rows: RowCount, risk: RiskLevel, slotIndex: number): number {
