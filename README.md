@@ -247,7 +247,3 @@ Returns server status and whether path data is loaded.
 | Authentication | JSON Web Tokens (jsonwebtoken, bcryptjs) |
 | Physics | Custom simulation engine (server/simulate.ts) |
 | Rendering | requestAnimationFrame, Canvas 2D API |
-
-## License
-
-This project is licensed under the MIT License.
