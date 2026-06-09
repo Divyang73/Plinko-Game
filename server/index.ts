@@ -57,13 +57,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', pathDataLoaded: Object.keys(pathData).length > 0 });
 });
 
+const MIN_BET = 0.01;
+const MAX_BET = 10000;
+
 app.post('/api/bet', requireAuth, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { betAmount, risk, rows }: BetRequest = req.body;
     
-    if (typeof betAmount !== 'number' || betAmount <= 0) {
-      return res.status(400).json({ error: 'Invalid bet amount' });
+    if (typeof betAmount !== 'number' || !isFinite(betAmount) || betAmount < MIN_BET) {
+      return res.status(400).json({ error: `Minimum bet is $${MIN_BET}` });
+    }
+    
+    if (betAmount > MAX_BET) {
+      return res.status(400).json({ error: `Maximum bet is $${MAX_BET}` });
     }
     
     if (!['low', 'medium', 'high'].includes(risk)) {
@@ -74,19 +81,40 @@ app.post('/api/bet', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid row count' });
     }
 
-    const user = await prisma.users.findUnique({ where: { id: userId } });
-    if (!user || user.balance < betAmount) {
-      return res.status(400).json({ error: 'Insufficient balance' });
-    }
-
-    // Deduct bet amount
-    await prisma.users.update({
-      where: { id: userId },
-      data: { balance: { decrement: betAmount } }
-    });
-    
     const slotIndex = selectSlot(rows, risk);
     const multiplier = getMultiplier(rows, risk, slotIndex);
+    const payout = Math.round(betAmount * multiplier * 100) / 100;
+
+    // Single atomic transaction: deduct, credit, and record
+    const updatedUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.users.findUnique({ where: { id: userId } });
+      if (!user || Number(user.balance) < betAmount) {
+        throw new Error('INSUFFICIENT_BALANCE');
+      }
+
+      await tx.users.update({
+        where: { id: userId },
+        data: { balance: { decrement: betAmount } }
+      });
+
+      await tx.users.update({
+        where: { id: userId },
+        data: { balance: { increment: payout } }
+      });
+
+      await tx.bets.create({
+        data: {
+          user_id: userId,
+          bet_amount: betAmount,
+          multiplier: multiplier,
+          payout: payout,
+          risk: risk,
+          rows: rows
+        }
+      });
+
+      return await tx.users.findUnique({ where: { id: userId } });
+    });
     
     const rowPaths = pathData[rows.toString()];
     const slotPaths = rowPaths ? rowPaths[slotIndex] : null;
@@ -106,37 +134,20 @@ app.post('/api/bet', requireAuth, async (req, res) => {
       ];
     }
     
-    const payout = betAmount * multiplier;
-
-    // Credit payout and record bet
-    await prisma.$transaction([
-      prisma.users.update({
-        where: { id: userId },
-        data: { balance: { increment: payout } }
-      }),
-      prisma.bets.create({
-        data: {
-          user_id: userId,
-          bet_amount: betAmount,
-          multiplier: multiplier,
-          payout: payout,
-          risk: risk,
-          rows: rows
-        }
-      })
-    ]);
-    
     const response: BetResponse = {
       slotIndex,
       multiplier,
       payout,
       animationPath,
       startX,
-      star: undefined // Removing star logic
+      star: undefined
     };
     
     res.json(response);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message === 'INSUFFICIENT_BALANCE') {
+      return res.status(400).json({ error: 'Insufficient balance' });
+    }
     console.error('Bet error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }

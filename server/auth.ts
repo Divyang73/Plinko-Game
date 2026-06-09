@@ -7,13 +7,65 @@ import { Request, Response, NextFunction } from 'express';
 dotenv.config();
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod';
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set. Server will not start.');
+  process.exit(1);
+}
+
+// In-memory rate limiter for auth endpoints
+const loginAttempts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_LOGIN_ATTEMPTS = 10;
+
+const checkRateLimit = (ip: string): boolean => {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+
+  if (!record || now > record.resetTime) {
+    loginAttempts.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (record.count >= MAX_LOGIN_ATTEMPTS) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+};
+
+// Validation constants
+const USERNAME_MIN = 3;
+const USERNAME_MAX = 20;
+const PASSWORD_MIN = 6;
+const PASSWORD_MAX = 128;
+const USERNAME_REGEX = /^[a-zA-Z0-9_]+$/;
+
+const validateCredentials = (username: string, password: string): string | null => {
+  if (typeof username !== 'string' || typeof password !== 'string') {
+    return 'Username and password must be strings';
+  }
+  if (username.length < USERNAME_MIN || username.length > USERNAME_MAX) {
+    return `Username must be between ${USERNAME_MIN} and ${USERNAME_MAX} characters`;
+  }
+  if (!USERNAME_REGEX.test(username)) {
+    return 'Username may only contain letters, numbers, and underscores';
+  }
+  if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
+    return `Password must be between ${PASSWORD_MIN} and ${PASSWORD_MAX} characters`;
+  }
+  return null;
+};
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+
+    const validationError = validateCredentials(username, password);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
     }
 
     const existingUser = await prisma.users.findUnique({ where: { username } });
@@ -42,6 +94,11 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const loginUser = async (req: Request, res: Response) => {
   try {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    if (!checkRateLimit(ip)) {
+      return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
+    }
+
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
