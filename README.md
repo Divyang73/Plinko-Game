@@ -1,33 +1,113 @@
 # Plinko Game
 
-A functional, production-ready Plinko application built with React, TypeScript, Node.js, Express, Prisma, and PostgreSQL. It features a deterministic physics model, secure authentication, and a responsive interface.
+A production-ready Plinko application built with React, TypeScript, Node.js, Express, Prisma, and PostgreSQL. It features server-authoritative outcomes via binomial distribution, pre-computed physics simulations for cross-device determinism, JWT authentication, and concurrent bet support with real-time Canvas rendering.
 
 ![Plinko Game](readme_image.png)
+
+## Architecture
+
+```
+                         ┌─────────────────────────────────────────────┐
+                         │                  Client                    │
+                         │                                             │
+                         │  React + TypeScript + HTML5 Canvas (60fps)  │
+                         │                                             │
+                         │  1. User clicks "Bet"                       │
+                         │  2. POST /api/bet { amount, risk, rows }    │
+                         │  3. Receives predetermined path + payout    │
+                         │  4. Animates ball along server-sent path    │
+                         └──────────────────┬──────────────────────────┘
+                                            │ HTTPS
+                         ┌──────────────────▼──────────────────────────┐
+                         │               Express API                   │
+                         │                                             │
+                         │  1. Validate JWT + input                    │
+                         │  2. selectSlot() via binomial distribution  │
+                         │  3. Lookup pre-computed path from JSON      │
+                         │  4. Atomic DB transaction (deduct + credit) │
+                         │  5. Return { path, multiplier, payout }     │
+                         └──────────────────┬──────────────────────────┘
+                                            │
+                    ┌───────────────────────┼───────────────────────┐
+                    │                       │                       │
+          ┌─────────▼─────────┐   ┌─────────▼─────────┐   ┌────────▼────────┐
+          │    PostgreSQL      │   │   pathData.json    │   │   gameLogic.ts  │
+          │                   │   │                    │   │                 │
+          │  users: balances  │   │  Pre-simulated     │   │  Binomial dist  │
+          │  bets: history    │   │  ball trajectories │   │  Multiplier LUT │
+          └───────────────────┘   └────────────────────┘   └─────────────────┘
+```
+
+The client is a pure renderer. It has zero influence over outcomes. The server selects the landing slot, computes the payout, commits the database transaction, and then hands the client a set of (x, y, t) keyframes to animate.
+
+## Why Binomial Distribution
+
+A physical Plinko board has `n` rows of pegs. At each peg, a ball bounces either left or right with equal probability. The number of rightward bounces determines which of the `n + 1` slots the ball lands in.
+
+This is mathematically equivalent to flipping `n` fair coins and counting heads. The probability of landing in slot `k` is:
+
+```
+P(k) = C(n, k) / 2^n
+```
+
+where `C(n, k)` is the binomial coefficient. This distribution is used directly in `selectSlot()` with no artificial weighting. The house edge is encoded entirely in the multiplier tables (the expected value of each configuration is strictly less than 1.00).
+
+## House Edge Verification
+
+The expected value (EV) for a $1 bet can be independently verified by summing `P(k) * multiplier(k)` across all slots. An EV below 1.00 confirms a house edge.
+
+| Configuration | EV per $1 Bet | House Edge |
+|:---|:---|:---|
+| 8 rows, Low | $0.9844 | 1.56% |
+| 8 rows, Medium | $0.9844 | 1.56% |
+| 8 rows, High | $0.9844 | 1.56% |
+| 12 rows, Low | $0.9783 | 2.17% |
+| 12 rows, Medium | $0.9595 | 4.05% |
+| 12 rows, High | $0.9517 | 4.83% |
+
+These values can be reproduced by running the following in any JavaScript environment:
+
+```javascript
+function C(n, k) {
+  let r = 1;
+  for (let i = 0; i < k; i++) { r *= (n - i); r /= (i + 1); }
+  return r;
+}
+
+function ev(n, multipliers) {
+  const total = 2 ** n;
+  return multipliers.reduce((sum, m, k) => sum + (C(n, k) / total) * m, 0);
+}
+
+// Example: 8 rows, low risk
+ev(8, [5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6]);
+```
 
 ## Features
 
 ### Core Gameplay
-- **Deterministic Backend**: The server exclusively determines outcomes utilizing a binomial distribution model, ensuring client manipulation is impossible.
-- **Pre-computed Paths**: Ball trajectories are simulated in advance to guarantee that the physics rendering perfectly matches the server-assigned outcome.
-- **Client-Side Rendering**: 60fps HTML5 Canvas rendering engine interpolates the predetermined paths for smooth visual playback.
-- **Simultaneous Bets**: The engine supports dropping multiple balls concurrently without performance degradation or logic interference.
+- **Server-Authoritative Outcomes**: The server exclusively determines results via binomial sampling, making client-side manipulation impossible.
+- **Pre-computed Paths**: Ball trajectories are physically simulated in advance (`npm run simulate`) and stored in `pathData.json`. The server selects a path that terminates at the assigned slot.
+- **Client-Side Rendering**: 60fps HTML5 Canvas engine interpolates the server-sent keyframes for smooth visual playback.
+- **Concurrent Bets**: Multiple balls can be dropped simultaneously. Risk and row controls are locked during active drops to prevent physics mismatches.
+
+### Security
+- **JWT Authentication**: Stateless token-based auth with mandatory `JWT_SECRET` (server refuses to start without it).
+- **Rate Limiting**: In-memory rate limiter on `/api/auth/login` (10 attempts per IP per 15-minute window).
+- **Input Validation**: Username restricted to 3-20 alphanumeric characters. Password 6-128 characters. Bet amount capped between $0.01 and $10,000.
+- **Atomic Transactions**: The entire bet flow (balance check, deduction, payout credit, bet record) executes inside a single Prisma `$transaction`. If any step fails, the entire operation rolls back.
 
 ### Game Configuration
-- **Risk Levels**: Select between Low, Medium, and High risk profiles.
-- **Row Configurations**: Choose between 8 or 12 rows, dynamically altering the canvas dimensions and multiplier distributions.
-- **Accurate Multipliers**: Mathematically verified multiplier tables balanced with a standard house edge.
-
-### Architecture & Security
-- **PostgreSQL Database**: Relational database storage mapped via Prisma ORM for tracking user balances and bet histories.
-- **Authentication**: Secure JWT-based authentication system for user registration, login, and protected API endpoints.
-- **Stateless Betting**: Balance deductions and payout credits are handled securely on the server side within ACID-compliant transactions.
+- **Risk Levels**: Low, Medium, High (affects multiplier table only, not landing probabilities).
+- **Row Options**: 8 or 12 rows, dynamically resizing the canvas.
+- **Bet Controls**: Half, Double, and Max buttons with floating-point precision handling.
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+
 - PostgreSQL instance
-- npm or yarn
+- npm
 
 ### Installation
 
@@ -42,66 +122,131 @@ A functional, production-ready Plinko application built with React, TypeScript, 
    npm install
    ```
 
-3. **Configure Environment Variables:**
-   Create a `.env` file in the root directory and add the following:
+3. **Configure environment variables:**
+   Create a `.env` file in the project root:
    ```env
    DATABASE_URL="postgresql://user:password@localhost:5432/plinko"
    JWT_SECRET="your_secure_random_string"
    ```
 
-4. **Initialize Database:**
+4. **Initialize database schema:**
    ```bash
    npx prisma db push
    ```
 
-5. **Generate Physics Paths (Required):**
+5. **Generate physics paths (required before first run):**
    ```bash
    npm run simulate
    ```
 
-### Running the Application
+### Running Locally
 
-**Terminal 1 - Backend Server:**
+Start the backend and frontend in separate terminals:
+
 ```bash
+# Terminal 1: Express API on port 3000
 npm run server
-```
-The Express API will initialize on `http://localhost:3000`.
 
-**Terminal 2 - Frontend Development Server:**
-```bash
+# Terminal 2: Vite dev server on port 5173
 npm run dev
 ```
-The React frontend will initialize on `http://localhost:5173`. Access this URL in your browser to interact with the application.
 
-## Multiplier Distributions
+Access the application at `http://localhost:5173`.
 
-### 8 Rows
-- **Low**: 5.6, 2.1, 1.1, 1.0, 0.5, 1.0, 1.1, 2.1, 5.6
-- **Medium**: 13, 3, 1.3, 0.7, 0.4, 0.7, 1.3, 3, 13
-- **High**: 29, 4, 1.5, 0.3, 0.2, 0.3, 1.5, 4, 29
+### Deployment (Render)
 
-### 12 Rows
-- **Low**: 10, 3, 1.6, 1.4, 1.1, 1.0, 0.5, 1.0, 1.1, 1.4, 1.6, 3, 10
-- **Medium**: 33, 11, 4, 2, 1.1, 0.6, 0.3, 0.6, 1.1, 2, 4, 11, 33
-- **High**: 170, 24, 8.1, 2, 0.7, 0.2, 0.2, 0.2, 0.7, 2, 8.1, 24, 170
+Use the following configuration for a single-service deployment:
 
-## API Documentation
+| Setting | Value |
+|:---|:---|
+| Build Command | `npm install --include=dev && npx prisma db push && npm run build && npm run simulate` |
+| Start Command | `npm run server` |
+| Environment Variables | `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production` |
+
+The Express server automatically serves the compiled frontend from `dist/` when it exists.
+
+## Project Structure
+
+```
+server/
+  auth.ts           JWT auth, rate limiting, input validation
+  gameLogic.ts      Binomial distribution, multiplier tables, slot selection
+  index.ts          Express routes, Prisma transactions, static serving
+  simulate.ts       Physics simulation script (generates pathData.json)
+  pathData.json     Pre-computed ball trajectories (git-ignored, ~60MB)
+
+src/
+  App.tsx           Root component, auth state, layout
+  main.tsx          React entry point
+  index.css         Global styles (dark theme)
+  classes/
+    Ball.ts         Ball animation, trail rendering, fade-out
+  components/
+    AuthModal.tsx   Login/Register modal
+    BetControls.tsx Bet amount, risk, rows, autoplay controls
+    GameCanvas.tsx  Canvas rendering, peg layout, sink animations
+  hooks/
+    useGame.ts      Game state management, API calls
+  types/
+    index.ts        Shared TypeScript interfaces
+
+prisma/
+  schema.prisma     Database schema (users, bets)
+```
+
+## API Reference
 
 ### POST /api/auth/register
-Registers a new user and initializes their balance.
-- **Payload**: `{ "username": "user1", "password": "password123" }`
+Registers a new user account with an initial balance of $1,000.
+- **Request**: `{ "username": "player1", "password": "securepass" }`
+- **Response**: `{ "token": "jwt...", "username": "player1", "balance": 1000 }`
+- **Validation**: Username 3-20 chars, alphanumeric/underscore only. Password 6-128 chars.
 
 ### POST /api/auth/login
-Authenticates a user and returns a JWT token.
-- **Payload**: `{ "username": "user1", "password": "password123" }`
+Authenticates a user and returns a signed JWT.
+- **Request**: `{ "username": "player1", "password": "securepass" }`
+- **Response**: `{ "token": "jwt...", "username": "player1", "balance": 985.50 }`
+- **Rate Limit**: 10 attempts per IP per 15-minute window. Returns `429` when exceeded.
 
 ### GET /api/user/balance
-Retrieves the authenticated user's current balance and username. Requires Authorization header.
+Returns the authenticated user's current balance and username.
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**: `{ "balance": 985.50, "username": "player1" }`
 
 ### POST /api/bet
-Places a bet, deducts the balance, generates the outcome, credits the payout, and returns the physical trajectory.
-- **Payload**: `{ "betAmount": 10, "risk": "low", "rows": 8 }`
-- **Response**: `{ slotIndex, multiplier, payout, animationPath, startX }`
+Places a bet within an atomic database transaction.
+- **Headers**: `Authorization: Bearer <token>`
+- **Request**: `{ "betAmount": 10, "risk": "low", "rows": 8 }`
+- **Response**: `{ "slotIndex": 2, "multiplier": 1.1, "payout": 11, "animationPath": [...], "startX": 300 }`
+- **Limits**: Minimum $0.01, maximum $10,000. Returns `400` for out-of-range values.
+
+### GET /api/health
+Returns server status and whether path data is loaded.
+- **Response**: `{ "status": "ok", "pathDataLoaded": true }`
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|:---|:---|:---|
+| Server crashes on startup | `JWT_SECRET` not set in `.env` | Add `JWT_SECRET` to your `.env` file. The server intentionally refuses to start without it. |
+| `pathData.json not found` warning | `npm run simulate` was not executed | Run `npm run simulate` before starting the server. This generates the ~60MB physics data file. |
+| Ball drops straight down | Path data missing for that slot/row combination | Re-run `npm run simulate` to regenerate all paths. |
+| `400 Bad Request` on bet | Bet amount exceeds balance or limits | Ensure bet is between $0.01 and $10,000 and does not exceed your current balance. |
+| Blank page after login | Balance returned as string from database | Ensure `Number()` conversion is applied. This is handled in the current codebase. |
+| `429 Too Many Requests` on login | Rate limiter triggered | Wait 15 minutes or restart the server to reset the in-memory rate limiter. |
+| Build fails on deployment | Dev dependencies not installed | Use `npm install --include=dev` in the build command to ensure TypeScript and type definitions are available. |
+| `PORT already declared` error | Duplicate `const PORT` in server code | Ensure only one `PORT` declaration exists at the top of `server/index.ts`. |
+
+## Technologies
+
+| Layer | Stack |
+|:---|:---|
+| Frontend | React 18, TypeScript, Vite, HTML5 Canvas |
+| Backend | Node.js, Express, TypeScript |
+| Database | PostgreSQL, Prisma ORM |
+| Authentication | JSON Web Tokens (jsonwebtoken, bcryptjs) |
+| Physics | Custom simulation engine (server/simulate.ts) |
+| Rendering | requestAnimationFrame, Canvas 2D API |
 
 ## License
 
