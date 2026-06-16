@@ -14,7 +14,7 @@ export class Ball {
   justLanded: boolean = false;
   
   multiplier: number;
-  payout: number;
+  reward: number;
   slotIndex: number;
   
   // Animation path (pre-computed)
@@ -30,7 +30,7 @@ export class Ball {
     animationPath: PathPoint[],
     color: string,
     multiplier: number,
-    payout: number,
+    reward: number,
     slotIndex: number
   ) {
     // Validate animation path
@@ -51,7 +51,7 @@ export class Ball {
     this.color = color;
     this.isActive = true;
     this.multiplier = multiplier;
-    this.payout = payout;
+    this.reward = reward;
     this.slotIndex = slotIndex;
   }
   

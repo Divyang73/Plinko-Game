@@ -153,13 +153,26 @@ npm run dev
 
 Access the application at `http://localhost:5173`.
 
+### Performance
+
+Tested locally with k6 on Apple M-series / 16GB RAM:
+| Metric | Result |
+|---|---|
+| Concurrent users | 100 |
+| Avg response time | ~6.7ms |
+| p95 response time | ~28.4ms |
+| Requests/sec | ~910 |
+| Error rate | 0% |
+
+*(local benchmark)*
+
 ### Deployment (Render)
 
 Use the following configuration for a single-service deployment:
 
 | Setting | Value |
 |:---|:---|
-| Build Command | `npm install --include=dev && npx prisma db push && npm run build && npm run simulate` |
+| Build Command | `npm install --include=dev && npx prisma db push --accept-data-loss && npm run build && npm run simulate` |
 | Start Command | `npm run server` |
 | Environment Variables | `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production` |
 

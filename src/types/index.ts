@@ -7,16 +7,16 @@ export interface PathPoint {
   t: number;
 }
 
-export interface BetRequest {
-  betAmount: number;
+export interface SimulationRequest {
+  cost: number;
   risk: RiskLevel;
   rows: RowCount;
 }
 
-export interface BetResponse {
+export interface SimulationResponse {
   slotIndex: number;
   multiplier: number;
-  payout: number;
+  reward: number;
   animationPath: PathPoint[];
   startX: number;
   star?: undefined;
@@ -38,11 +38,11 @@ export interface Ball {
 }
 
 export interface GameState {
-  balance: number;
-  betAmount: number;
+  credits: number;
+  cost: number;
   risk: RiskLevel;
   rows: RowCount;
   isPlaying: boolean;
-  lastWin: number;
+  lastReward: number;
   lastMultiplier: number;
 }

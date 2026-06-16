@@ -80,12 +80,12 @@ export const registerUser = async (req: Request, res: Response) => {
       data: {
         username,
         password: password_hash,
-        balance: 1000.00
+        credits: 1000.00
       }
     });
 
     const token = jwt.sign({ userId: newUser.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, username: newUser.username, balance: newUser.balance });
+    res.json({ token, username: newUser.username, credits: newUser.credits });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
@@ -115,7 +115,7 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, username: user.username, balance: user.balance });
+    res.json({ token, username: user.username, credits: user.credits });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });

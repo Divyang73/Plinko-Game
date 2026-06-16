@@ -5,11 +5,11 @@ import type { RiskLevel, RowCount } from '../types';
 interface GameCanvasProps {
   rows: RowCount;
   risk: RiskLevel;
-  onBallLanded: (ballId: string, multiplier: number, payout: number) => void;
+  onBallLanded: (ballId: string, multiplier: number, reward: number) => void;
   dropBall: { 
     animationPath: Array<{x: number, y: number, t: number}>;
     multiplier: number; 
-    payout: number;
+    reward: number;
     slotIndex: number;
   } | null;
 }
@@ -132,7 +132,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
         dropBall.animationPath,
         color,
         dropBall.multiplier,
-        dropBall.payout,
+        dropBall.reward,
         dropBall.slotIndex
       );
       ballsRef.current.push(ball);
@@ -239,8 +239,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ rows, risk, onBallLanded
             color: getSinkPalette(ball.multiplier).fill,
             timestamp: now
           });
-          
-          onBallLanded(ball.id, ball.multiplier, ball.payout);
+          onBallLanded(ball.id, ball.multiplier, ball.reward);
         }
         
         ball.draw(ctx);

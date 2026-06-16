@@ -1,13 +1,13 @@
 import React from 'react';
 
-interface WinEntry {
+interface OutcomeEntry {
   id: string;
   amount: number;
   multiplier: number;
 }
 
-interface WinsQueueProps {
-  wins: WinEntry[];
+interface OutcomesQueueProps {
+  outcomes: OutcomeEntry[];
 }
 
 const getMultiplierTier = (multiplier: number): string => {
@@ -21,17 +21,17 @@ const getMultiplierTier = (multiplier: number): string => {
   return 'win-tier-epic';
 };
 
-export const WinsQueue: React.FC<WinsQueueProps> = ({ wins }) => {
+export const OutcomesQueue: React.FC<OutcomesQueueProps> = ({ outcomes }) => {
   return (
     <div className="wins-panel">
       <div className="wins-list">
-        {wins.map((win, index) => (
+        {outcomes.map((outcome, index) => (
           <div
-            key={win.id}
+            key={outcome.id}
             className={`wins-entry ${index === 0 ? 'wins-entry-new' : ''}`}
           >
-            <span className={`wins-multiplier ${getMultiplierTier(win.multiplier)}`}>
-              {win.multiplier > 0 ? `${win.multiplier}x` : '—'}
+            <span className={`wins-multiplier ${getMultiplierTier(outcome.multiplier)}`}>
+              {outcome.multiplier > 0 ? `${outcome.multiplier}x` : '—'}
             </span>
           </div>
         ))}

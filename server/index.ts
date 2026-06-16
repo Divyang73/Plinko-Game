@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { selectSlot, getMultiplier } from './gameLogic.js';
-import type { BetRequest, BetResponse, PathPoint } from '../src/types/index.js';
+import type { SimulationRequest, SimulationResponse, PathPoint } from '../src/types/index.js';
 import { registerUser, loginUser, requireAuth } from './auth.js';
 import { PrismaClient } from '@prisma/client';
 
@@ -42,14 +42,14 @@ try {
 app.post('/api/auth/register', registerUser);
 app.post('/api/auth/login', loginUser);
 
-app.get('/api/user/balance', requireAuth, async (req, res) => {
+app.get('/api/user/credits', requireAuth, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const user = await prisma.users.findUnique({ where: { id: userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ balance: user.balance, username: user.username });
+    res.json({ credits: user.credits, username: user.username });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch balance' });
+    res.status(500).json({ error: 'Failed to fetch credits' });
   }
 });
 
@@ -57,20 +57,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', pathDataLoaded: Object.keys(pathData).length > 0 });
 });
 
-const MIN_BET = 0.01;
-const MAX_BET = 10000;
+const MIN_COST = 0.01;
+const MAX_COST = 10000;
 
-app.post('/api/bet', requireAuth, async (req, res) => {
+app.post('/api/simulate', requireAuth, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const { betAmount, risk, rows }: BetRequest = req.body;
+    const { cost, risk, rows }: SimulationRequest = req.body;
     
-    if (typeof betAmount !== 'number' || !isFinite(betAmount) || betAmount < MIN_BET) {
-      return res.status(400).json({ error: `Minimum bet is $${MIN_BET}` });
+    if (typeof cost !== 'number' || !isFinite(cost) || cost < MIN_COST) {
+      return res.status(400).json({ error: `Minimum cost is $${MIN_COST}` });
     }
     
-    if (betAmount > MAX_BET) {
-      return res.status(400).json({ error: `Maximum bet is $${MAX_BET}` });
+    if (cost > MAX_COST) {
+      return res.status(400).json({ error: `Maximum cost is $${MAX_COST}` });
     }
     
     if (!['low', 'medium', 'high'].includes(risk)) {
@@ -83,31 +83,31 @@ app.post('/api/bet', requireAuth, async (req, res) => {
 
     const slotIndex = selectSlot(rows, risk);
     const multiplier = getMultiplier(rows, risk, slotIndex);
-    const payout = Math.round(betAmount * multiplier * 100) / 100;
+    const reward = Math.round(cost * multiplier * 100) / 100;
 
     // Single atomic transaction: deduct, credit, and record
     const updatedUser = await prisma.$transaction(async (tx) => {
       const user = await tx.users.findUnique({ where: { id: userId } });
-      if (!user || Number(user.balance) < betAmount) {
-        throw new Error('INSUFFICIENT_BALANCE');
+      if (!user || Number(user.credits) < cost) {
+        throw new Error('INSUFFICIENT_CREDITS');
       }
 
       await tx.users.update({
         where: { id: userId },
-        data: { balance: { decrement: betAmount } }
+        data: { credits: { decrement: cost } }
       });
 
       await tx.users.update({
         where: { id: userId },
-        data: { balance: { increment: payout } }
+        data: { credits: { increment: reward } }
       });
 
-      await tx.bets.create({
+      await tx.simulations.create({
         data: {
           user_id: userId,
-          bet_amount: betAmount,
+          cost: cost,
           multiplier: multiplier,
-          payout: payout,
+          reward: reward,
           risk: risk,
           rows: rows
         }
@@ -134,10 +134,10 @@ app.post('/api/bet', requireAuth, async (req, res) => {
       ];
     }
     
-    const response: BetResponse = {
+    const response: SimulationResponse = {
       slotIndex,
       multiplier,
-      payout,
+      reward,
       animationPath,
       startX,
       star: undefined
@@ -145,10 +145,10 @@ app.post('/api/bet', requireAuth, async (req, res) => {
     
     res.json(response);
   } catch (error: any) {
-    if (error.message === 'INSUFFICIENT_BALANCE') {
-      return res.status(400).json({ error: 'Insufficient balance' });
+    if (error.message === 'INSUFFICIENT_CREDITS') {
+      return res.status(400).json({ error: 'Insufficient credits' });
     }
-    console.error('Bet error:', error);
+    console.error('Simulation error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
